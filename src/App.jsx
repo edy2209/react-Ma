@@ -6,6 +6,12 @@ import Register from './pages/Register';
 import Dashboard from './atasan/Dashboard';
 import DashboardPeminjam from './peminjam/DashboardP';
 import ProtectedRoute from './protectedRoute';
+import LaporanAset from './atasan/LaporanAset';
+import StatusMaintenance from './atasan/StatusMaintenance';
+import LaporanPeminjaman from './atasan/LaporanPeminjaman';
+import MengajukanPeminjaman from './peminjam/MengajukanPeminjaman';
+import BarangDipinjam from './peminjam/BarangDipinjam';
+
 
 
 
@@ -30,8 +36,16 @@ const App = () => {
 
         <Route path="/dashboard-p" element={<ProtectedRoute element={<DashboardPeminjam />} />} />
 
-      
+        <Route path="/atasan/laporan-aset" element={<ProtectedRoute element={<LaporanAset />} />} />
         
+        <Route path="/atasan/status-maintenance" element={<ProtectedRoute element={<StatusMaintenance />} />} />
+      
+        <Route path="/atasan/laporan-peminjaman" element={<ProtectedRoute element={<LaporanPeminjaman />} />} />
+
+        <Route path="/peminjam/ajukan-peminjaman" element={<ProtectedRoute element={<MengajukanPeminjaman />} />} />
+        <Route path="/peminjam/barang-dipinjam" element={<ProtectedRoute element={<BarangDipinjam />} />} />
+        
+      
       </Routes>
     </Router>
   );
