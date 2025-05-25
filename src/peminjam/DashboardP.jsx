@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import SidebarP from './SidebarP';
 import { FaUserCircle } from 'react-icons/fa';
+import PopupRating from '../popup/PopupRating';
 
 const DashboardPeminjam = () => {
   const profileRef = useRef(null);
@@ -124,7 +125,8 @@ const DashboardPeminjam = () => {
           </a>
         </div>
       </div>
-
+        {/* Popup Rating */}
+        <PopupRating userId={user?.id} />
         {/* Footer */}
         <div className="mt-16 text-center text-gray-400 text-sm">
           &copy; {new Date().getFullYear()} MA-ERKK &mdash; Dashboard Peminjam. All rights reserved.
