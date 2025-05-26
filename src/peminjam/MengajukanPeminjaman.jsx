@@ -93,6 +93,23 @@ const MengajukanPeminjaman = () => {
     e.preventDefault();
     if (!form.barang_id || !form.kbarang_id) return alert('Pilih barang dan kualitas terlebih dahulu!');
     setLoading(true);
+
+    console.log('selectedBarang', selectedBarang);
+    console.log('form.jumlah', form.jumlah);
+
+    const jumlahNum = Number(form.jumlah); // convert ke number dulu
+    // Validasi tanggal pengembalian tidak boleh kurang dari tanggal pinjam
+    if (form.tanggal_pengembalian < form.tanggal_pinjam) {
+      alert('Tanggal pengembalian tidak boleh kurang dari tanggal pinjam!');
+      setLoading(false); // reset loading
+      return; // hentikan submit
+    }
+    if (selectedBarang && jumlahNum > Number(selectedBarang.jumlah_barang)) {
+      alert('Jumlah barang tidak cukup!');
+      setLoading(false); // reset loading
+      return;
+    }
+
     try {
       const res = await fetch('http://localhost:8000/api/peminjaman', {
         method: 'POST',
