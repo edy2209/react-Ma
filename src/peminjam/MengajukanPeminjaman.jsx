@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import SidebarP from './SidebarP';
 import { FaUserCircle, FaPlusCircle, FaBoxOpen, FaSearch } from 'react-icons/fa';
+import Swal from 'sweetalert2'
+
 
 const MengajukanPeminjaman = () => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -91,7 +93,14 @@ const MengajukanPeminjaman = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.barang_id || !form.kbarang_id) return alert('Pilih barang dan kualitas terlebih dahulu!');
+    if (!form.barang_id || !form.kbarang_id) {
+      Swal.fire({
+        title: "Peringatan!",
+        text: "Pilih barang dan kualitas terlebih dahulu!",
+        icon: "warning"
+      });
+      return;
+    }
     setLoading(true);
 
     console.log('selectedBarang', selectedBarang);
@@ -100,12 +109,20 @@ const MengajukanPeminjaman = () => {
     const jumlahNum = Number(form.jumlah); // convert ke number dulu
     // Validasi tanggal pengembalian tidak boleh kurang dari tanggal pinjam
     if (form.tanggal_pengembalian < form.tanggal_pinjam) {
-      alert('Tanggal pengembalian tidak boleh kurang dari tanggal pinjam!');
+      Swal.fire({
+        title: "Kesalahan!",
+        text: "Tanggal pengembalian tidak boleh kurang dari tanggal pinjam!",
+        icon: "error"
+      });
       setLoading(false); // reset loading
       return; // hentikan submit
     }
     if (selectedBarang && jumlahNum > Number(selectedBarang.jumlah_barang)) {
-      alert('Jumlah barang tidak cukup!');
+      Swal.fire({
+        title: "Stok Tidak Cukup!",
+        text: "Jumlah barang yang diminta melebihi stok yang tersedia.",
+        icon: "error"
+      });
       setLoading(false); // reset loading
       return;
     }
@@ -124,7 +141,11 @@ const MengajukanPeminjaman = () => {
         }),
       });
       if (res.ok) {
-        alert('Pengajuan peminjaman berhasil dikirim!');
+        Swal.fire({
+          title: "Sukses!",
+          text: "Pengajuan peminjaman berhasil dikirim!",
+          icon: "success"
+        });
         setForm({
           barang_id: '',
           jumlah: 1,
@@ -136,7 +157,11 @@ const MengajukanPeminjaman = () => {
         setSelectedBarang(null);
         setBarangSearch('');
       } else {
-        alert('Gagal mengajukan peminjaman!');
+        Swal.fire({
+          title: "Gagal!",
+          text: "Gagal mengajukan peminjaman.",
+          icon: "error"
+        });
       }
     } finally {
       setLoading(false);

@@ -3,6 +3,7 @@ import Sidebar from './Sidebar';
 import { FaUserCircle } from 'react-icons/fa';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable'; // GANTI import ini!
+import Swal from 'sweetalert2';
 
 const LaporanPeminjaman = () => {
   const [dataAset, setDataAset] = useState([]);
@@ -113,7 +114,12 @@ const handleExportPDF = async () => {
 
     doc.save('laporan-peminjaman-aset.pdf');
   } catch (err) {
-    alert('Gagal export PDF!\n' + err.message);
+    Swal.fire({
+      title: 'Gagal Export PDF!',
+      text: err.message,
+      icon: 'error'
+    });
+   // alert('Gagal export PDF!\n' + err.message);
   }
   setLoadingExport(false);
 };
