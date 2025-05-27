@@ -11,6 +11,8 @@ import StatusMaintenance from './atasan/StatusMaintenance';
 import LaporanPeminjaman from './atasan/LaporanPeminjaman';
 import MengajukanPeminjaman from './peminjam/MengajukanPeminjaman';
 import BarangDipinjam from './peminjam/BarangDipinjam';
+import DataAset from './peminjam/DataAset';
+import BarangDikembalikan from './peminjam/BarangDikembalikan';
 
 
 
@@ -44,8 +46,10 @@ const App = () => {
 
         <Route path="/peminjam/ajukan-peminjaman" element={<ProtectedRoute element={<MengajukanPeminjaman />} />} />
         <Route path="/peminjam/barang-dipinjam" element={<ProtectedRoute element={<BarangDipinjam />} />} />
+        <Route path="/peminjam/data-aset" element={<ProtectedRoute element={<DataAset />} />} />
+        <Route path="/peminjam/barang-dikembalikan" element={<ProtectedRoute element={<BarangDikembalikan />} />} />
         
-      
+        
       </Routes>
     </Router>
   );
