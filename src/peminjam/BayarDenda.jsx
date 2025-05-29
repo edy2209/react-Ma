@@ -11,12 +11,26 @@ const BayarDenda = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await axios.get('http://127.0.0.1:8000/api/denda/user/1');
-        if (response.data.success && response.data.data.length > 0) {
-          setDendaData(response.data.data[0]);
-        } else {
-          setError('Tidak ada data denda ditemukan');
+        const user = JSON.parse(localStorage.getItem('user'));
+        const userId = user?.id;
+
+        if (!userId) {
+          setError("User belum login atau ID tidak ditemukan");
+          setLoading(false);
+          return;
         }
+
+        const response = await axios.get(`http://127.0.0.1:8000/api/denda/user/${userId}`);
+
+        if (response.data.success) {
+        const belumLunas = response.data.data.find(item => item.status !== 'lunas');
+        if (belumLunas) {
+          setDendaData(belumLunas);
+        } else {
+          setError('Tidak ada denda yang perlu dibayar');
+        }
+}
+
       } catch (err) {
         setError('Gagal memuat data denda');
         console.error('Error fetching data:', err);
