@@ -15,6 +15,8 @@ import DataAset from './peminjam/DataAset';
 import BarangDikembalikan from './peminjam/BarangDikembalikan';
 import BayarDenda from './peminjam/BayarDenda';
 import HistoryDenda from './peminjam/HistoryDenda';
+import LaporanPengembalian from './atasan/LaporanPengembalian';
+import LaporanDenda from './atasan/LaporanDenda';
 
 
 
@@ -53,7 +55,8 @@ const App = () => {
         <Route path="/peminjam/barang-dikembalikan" element={<ProtectedRoute element={<BarangDikembalikan />} />} />
         <Route path="/peminjam/denda" element={<ProtectedRoute element={<BayarDenda />} />} />
         <Route path="/peminjam/history-denda" element={<ProtectedRoute element={<HistoryDenda />} />} />
-
+        <Route path="/atasan/laporan-pengembalian" element={<ProtectedRoute element={<LaporanPengembalian />} />} />
+        <Route path="/atasan/denda-user" element={<ProtectedRoute element={<LaporanDenda />} />} />
       </Routes>
     </Router>
   );

@@ -12,6 +12,7 @@ const StatusMaintenance = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+  const [jumlahProses, setJumlahProses] = useState(0);
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -32,6 +33,12 @@ const StatusMaintenance = () => {
             (a, b) => new Date(b.created_at) - new Date(a.created_at)
           );
           setDataMaintenance(sorted);
+
+          const totalProses = sorted
+            .filter((item) => item.status?.toLowerCase().trim() === 'proses')
+            .reduce((sum, item) => sum + Number(item.jumlah || 0), 0);
+
+          setJumlahProses(totalProses);
         }
       })
       .catch((err) => console.error('Error:', err));
@@ -80,11 +87,14 @@ const StatusMaintenance = () => {
           </div>
         </div>
 
-        <h1 className="text-2xl font-bold mb-4 flex items-center gap-2">
+        <h1 className="text-2xl font-bold mb-2 flex items-center gap-2">
           <FaTools className="text-blue-500" /> Status Maintenance
         </h1>
 
-        {/* Search */}
+        <div className="mb-4 text-lg text-gray-700 font-medium">
+          Total barang dalam proses maintenance: <span className="font-bold">{jumlahProses}</span>
+        </div>
+
         <div className="mb-4">
           <input
             type="text"
@@ -98,7 +108,6 @@ const StatusMaintenance = () => {
           />
         </div>
 
-        {/* Data Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {paginatedData.map((item) => (
             <div key={item.id} className="p-4 bg-white rounded-lg shadow-md">
@@ -107,19 +116,19 @@ const StatusMaintenance = () => {
               </h2>
               <p><strong>Kategori:</strong> {item.barang.category_id}</p>
               <p>
-                  <strong>Status:</strong>{' '}
-                  <span
-                    className={`px-2 py-1 rounded text-sm font-semibold ${
-                      item.status === 'selesai'
-                        ? 'bg-green-100 text-green-700'
-                        : item.status === 'pending'
-                        ? 'bg-yellow-100 text-yellow-700'
-                        : 'bg-orange-100 text-orange-700'
-                    }`}
-                  >
-                    {item.status}
-                  </span>
-                </p>
+                <strong>Status:</strong>{' '}
+                <span
+                  className={`px-2 py-1 rounded text-sm font-semibold ${
+                    item.status === 'selesai'
+                      ? 'bg-green-100 text-green-700'
+                      : item.status === 'pending'
+                      ? 'bg-yellow-100 text-yellow-700'
+                      : 'bg-orange-100 text-orange-700'
+                  }`}
+                >
+                  {item.status}
+                </span>
+              </p>
               <p><strong>Keterangan:</strong> {item.deskripsi}</p>
               <p><strong>Jumlah:</strong> {item.jumlah}</p>
               <p><strong>Tanggal:</strong> {item.tanggal_mulai}</p>
@@ -127,7 +136,6 @@ const StatusMaintenance = () => {
           ))}
         </div>
 
-        {/* Pagination */}
         <div className="flex justify-center mt-6 space-x-2">
           {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
             <button
