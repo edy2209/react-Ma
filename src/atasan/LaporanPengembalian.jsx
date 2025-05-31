@@ -1,76 +1,27 @@
 import React, { useEffect, useState, useRef } from 'react';
 import Sidebar from './Sidebar';
 import { FaUserCircle } from 'react-icons/fa';
+import { FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable'; // GANTI import ini!
-import Swal from 'sweetalert2';
+import autoTable from 'jspdf-autotable';
 
-const LaporanPeminjaman = () => {
-  const [dataAset, setDataAset] = useState([]);
-  const [peminjaman, setPeminjaman] = useState([]);
-  const [maintenanceData, setMaintenanceData] = useState([]);
-  const [stat, setStat] = useState({
-    totalBarang: 0,
-    tersedia: 0,
-    dipinjam: 0,
-    maintenance: 0,
-  });
+const LaporanPengembalian = () => {
+  const [pengembalian, setPengembalian] = useState([]);
   const [search, setSearch] = useState('');
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [loadingExport, setLoadingExport] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
   const profileRef = useRef(null);
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const nama = user?.name || 'User';
 
   useEffect(() => {
-    // Fetch barang
-    fetch('http://localhost:8000/api/barang')
+    // Fetch pengembalian
+    fetch('http://localhost:8000/api/pengembalian')
       .then(res => res.json())
-      .then(data => setDataAset(data));
-
-    // Fetch peminjaman
-    fetch('http://localhost:8000/api/peminjaman')
-      .then(res => res.json())
-      .then(data => setPeminjaman(data));
-
-    // Fetch maintenance
-    fetch('http://localhost:8000/api/maintenance')
-      .then(res => res.json())
-      .then(json => {
-        if (json.success && Array.isArray(json.data)) {
-          setMaintenanceData(json.data);
-        }
-      });
+      .then(data => setPengembalian(data));
   }, []);
-
-  useEffect(() => {
-    const totalBarang = dataAset.reduce((sum, b) => sum + (parseInt(b.jumlah_barang) || 0), 0);
-
-    const dipinjamList = peminjaman.filter(p => p.status === 'dipinjam' || p.status === 'disetujui');
-    const dipinjam = dipinjamList.reduce((sum, p) => sum + (parseInt(p.jumlah) || 0), 0);
-
-    // Hitung maintenance dari peminjaman dengan status 'maintenance'
-    const maintenanceFromPeminjaman = peminjaman
-      .filter(p => p.status === 'maintenance')
-      .reduce((sum, p) => sum + (parseInt(p.jumlah) || 0), 0);
-
-    // Hitung maintenance dari API maintenance dengan status 'proses'
-    const maintenanceFromAPI = maintenanceData
-      .filter(m => m.status === 'proses')
-      .reduce((sum, m) => sum + (parseInt(m.jumlah) || 0), 0);
-
-    // Total maintenance gabungan
-    const maintenance = maintenanceFromPeminjaman + maintenanceFromAPI;
-
-    const tersedia = totalBarang - dipinjam - maintenance;
-
-    setStat({
-      totalBarang,
-      tersedia: tersedia < 0 ? 0 : tersedia,
-      dipinjam,
-      maintenance,
-    });
-  }, [dataAset, peminjaman, maintenanceData]);
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -87,9 +38,19 @@ const LaporanPeminjaman = () => {
     window.location.href = '/';
   };
 
-  const filteredPeminjaman = peminjaman
-    .filter(p => ['dipinjam', 'disetujui'].includes(p.status))
+  // Filter data berdasarkan pencarian
+  const filteredPengembalian = pengembalian
     .filter(p => (p.barang?.name || '').toLowerCase().includes(search.toLowerCase()));
+
+  // Pagination logic
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = filteredPengembalian.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredPengembalian.length / itemsPerPage);
+
+  const paginate = (pageNumber) => setCurrentPage(pageNumber);
+  const nextPage = () => setCurrentPage(prev => (prev < totalPages ? prev + 1 : prev));
+  const prevPage = () => setCurrentPage(prev => (prev > 1 ? prev - 1 : prev));
 
   const handleExportPDF = async () => {
     setLoadingExport(true);
@@ -99,10 +60,10 @@ const LaporanPeminjaman = () => {
       doc.setFontSize(18);
       doc.text('MA-ERKK', doc.internal.pageSize.getWidth() / 2, 18, { align: 'center' });
       doc.setFontSize(12);
-      doc.text('Laporan Peminjaman Aset', doc.internal.pageSize.getWidth() / 2, 28, { align: 'center' });
+      doc.text('Laporan Pengembalian Aset', doc.internal.pageSize.getWidth() / 2, 28, { align: 'center' });
       doc.setFontSize(10);
       doc.text(
-        'Laporan ini berisi data peminjaman aset yang masih aktif (status dipinjam/disetujui).',
+        'Laporan ini berisi data pengembalian aset yang telah dikembalikan.',
         doc.internal.pageSize.getWidth() / 2,
         36,
         { align: 'center' }
@@ -110,14 +71,15 @@ const LaporanPeminjaman = () => {
 
       autoTable(doc, {
         startY: 44,
-        head: [['No', 'Nama Barang', 'Jumlah', 'Tanggal Pinjam', 'Tanggal Kembali', 'Status']],
-        body: filteredPeminjaman.map((p, idx) => [
+        head: [['No', 'Nama Barang', 'Jumlah', 'Kondisi', 'Peminjam', 'Tanggal Pinjam', 'Tanggal Kembali']],
+        body: filteredPengembalian.map((p, idx) => [
           idx + 1,
           p.barang?.name || '-',
           p.jumlah || '-',
+          p.kbarang?.name || '-',
+          p.peminjam?.name || '-',
           p.tanggal_pinjam || '-',
           p.tanggal_pengembalian || '-',
-          p.status || '-',
         ]),
         styles: { fontSize: 9 },
       });
@@ -133,18 +95,12 @@ const LaporanPeminjaman = () => {
       doc.text('_________________________', ttdX, ttdY + 20);
       doc.text('Tanda Tangan', ttdX, ttdY + 27);
 
-    doc.save('laporan-peminjaman-aset.pdf');
-  } catch (err) {
-    Swal.fire({
-      title: 'Gagal Export PDF!',
-      text: err.message,
-      icon: 'error'
-    });
-   // alert('Gagal export PDF!\n' + err.message);
-  }
-  setLoadingExport(false);
-};
-// ...existing code...
+      doc.save('laporan-pengembalian-aset.pdf');
+    } catch (err) {
+      alert('Gagal export PDF!\n' + err.message);
+    }
+    setLoadingExport(false);
+  };
 
   return (
     <div className="flex">
@@ -174,33 +130,17 @@ const LaporanPeminjaman = () => {
           </div>
         </div>
 
-        <h1 className="text-2xl font-bold mb-4">Laporan Peminjaman Aset</h1>
-
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-white shadow rounded p-4 text-center">
-            <div className="text-gray-500">Total Barang</div>
-            <div className="text-xl font-bold">{stat.totalBarang}</div>
-          </div>
-          <div className="bg-white shadow rounded p-4 text-center">
-            <div className="text-gray-500">Tersedia</div>
-            <div className="text-xl font-bold">{stat.tersedia}</div>
-          </div>
-          <div className="bg-white shadow rounded p-4 text-center">
-            <div className="text-gray-500">Dipinjam</div>
-            <div className="text-xl font-bold">{stat.dipinjam}</div>
-          </div>
-          <div className="bg-white shadow rounded p-4 text-center">
-            <div className="text-gray-500">Maintenance</div>
-            <div className="text-xl font-bold">{stat.maintenance}</div>
-          </div>
-        </div>
+        <h1 className="text-2xl font-bold mb-4">Laporan Pengembalian Aset</h1>
 
         <div className="flex flex-col md:flex-row justify-between items-center mb-4 gap-2">
           <input
             type="text"
             placeholder="Cari nama barang..."
             value={search}
-            onChange={e => setSearch(e.target.value)}
+            onChange={e => {
+              setSearch(e.target.value);
+              setCurrentPage(1); // Reset ke halaman pertama saat mencari
+            }}
             className="border rounded px-3 py-2 w-full md:w-1/3"
           />
           <button
@@ -218,42 +158,75 @@ const LaporanPeminjaman = () => {
           </button>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto mb-4">
           <table className="table-auto w-full border-collapse border border-gray-300">
             <thead>
               <tr className="bg-gray-100">
                 <th className="border border-gray-300 px-4 py-2">No</th>
                 <th className="border border-gray-300 px-4 py-2">Nama Barang</th>
                 <th className="border border-gray-300 px-4 py-2">Jumlah</th>
+                <th className="border border-gray-300 px-4 py-2">Kondisi</th>
+                <th className="border border-gray-300 px-4 py-2">Peminjam</th>
                 <th className="border border-gray-300 px-4 py-2">Tanggal Pinjam</th>
                 <th className="border border-gray-300 px-4 py-2">Tanggal Kembali</th>
-                <th className="border border-gray-300 px-4 py-2">Status</th>
               </tr>
             </thead>
             <tbody>
-              {filteredPeminjaman.map((p, idx) => (
+              {currentItems.map((p, idx) => (
                 <tr key={p.id} className="text-center hover:bg-gray-50">
-                  <td className="border border-gray-300 px-4 py-2">{idx + 1}</td>
+                  <td className="border border-gray-300 px-4 py-2">{indexOfFirstItem + idx + 1}</td>
                   <td className="border border-gray-300 px-4 py-2">{p.barang?.name || '-'}</td>
                   <td className="border border-gray-300 px-4 py-2">{p.jumlah}</td>
+                  <td className="border border-gray-300 px-4 py-2">{p.kbarang?.name || '-'}</td>
+                  <td className="border border-gray-300 px-4 py-2">{p.peminjam?.name || '-'}</td>
                   <td className="border border-gray-300 px-4 py-2">{p.tanggal_pinjam}</td>
                   <td className="border border-gray-300 px-4 py-2">{p.tanggal_pengembalian}</td>
-                  <td className="border border-gray-300 px-4 py-2 capitalize">{p.status}</td>
                 </tr>
               ))}
-              {filteredPeminjaman.length === 0 && (
+              {filteredPengembalian.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="text-center py-4 text-gray-500">
-                    Tidak ada data peminjaman yang ditemukan.
+                  <td colSpan={7} className="text-center py-4 text-gray-500">
+                    Tidak ada data pengembalian yang ditemukan.
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
+
+        {/* Pagination Controls */}
+        {filteredPengembalian.length > itemsPerPage && (
+          <div className="flex justify-center items-center gap-2 mt-4">
+            <button
+              onClick={prevPage}
+              disabled={currentPage === 1}
+              className={`p-2 rounded ${currentPage === 1 ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-200'}`}
+            >
+              <FiChevronLeft size={20} />
+            </button>
+
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map(number => (
+              <button
+                key={number}
+                onClick={() => paginate(number)}
+                className={`w-10 h-10 rounded ${currentPage === number ? 'bg-red-500 text-white' : 'bg-white text-gray-700 hover:bg-gray-200'}`}
+              >
+                {number}
+              </button>
+            ))}
+
+            <button
+              onClick={nextPage}
+              disabled={currentPage === totalPages}
+              className={`p-2 rounded ${currentPage === totalPages ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-200'}`}
+            >
+              <FiChevronRight size={20} />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
 };
 
-export default LaporanPeminjaman;
+export default LaporanPengembalian;

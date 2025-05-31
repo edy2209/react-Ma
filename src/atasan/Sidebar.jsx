@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { FaHome, FaFileAlt, FaTools, FaClipboardList } from 'react-icons/fa';
+import { FaHome, FaFileAlt, FaTools, FaClipboardList, FaUndo, FaMoneyBillAlt } from 'react-icons/fa';
 
 const Sidebar = () => {
   return (
@@ -22,6 +22,15 @@ const Sidebar = () => {
         <Link to="/atasan/laporan-peminjaman" className="flex items-center gap-3 hover:bg-gray-700 p-2 rounded">
           <FaClipboardList className="text-xl" />
           <span className="text-lg">Laporan Peminjaman</span>
+        </Link>
+        {/* Tambahan fitur baru */}
+        <Link to="/atasan/laporan-pengembalian" className="flex items-center gap-3 hover:bg-gray-700 p-2 rounded">
+          <FaUndo className="text-xl" />
+          <span className="text-lg">Laporan Pengembalian</span>
+        </Link>
+        <Link to="/atasan/denda-user" className="flex items-center gap-3 hover:bg-gray-700 p-2 rounded">
+          <FaMoneyBillAlt className="text-xl" />
+          <span className="text-lg">Denda User</span>
         </Link>
       </nav>
     </div>
