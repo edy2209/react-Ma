@@ -133,11 +133,12 @@ const DataAset = () => {
                         <div className="flex items-center gap-2 text-sm text-gray-500">
                           <FaTags className="text-blue-300" /> {aset.category?.name || '-'}
                         </div>
-                      </div>
-                      {/* Deskripsi */}
+                      </div>        
+                      {/* Deskripsi 
                       <div className="mt-3 text-gray-500 text-sm text-center min-h-[40px]">
                         {aset.deskripsi || <span className="italic text-gray-300">Tidak ada deskripsi</span>}
                       </div>
+                      */}
                     </div>
                   );
                 })
