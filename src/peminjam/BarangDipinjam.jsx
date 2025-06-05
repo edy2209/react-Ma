@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import SidebarP from './SidebarP';
 import { FaUserCircle, FaSearch, FaBoxOpen, FaUndoAlt } from 'react-icons/fa';
+import Swal from 'sweetalert2';
 
 const BarangDipinjam = () => {
   const [data, setData] = useState([]);
@@ -9,7 +10,7 @@ const BarangDipinjam = () => {
   const [showModal, setShowModal] = useState(false);
   const [selected, setSelected] = useState(null);
   const [kualitasList, setKualitasList] = useState([]);
-  const [kbarang_id, setKbarangId] = useState('');
+  const [kbarangId, setKbarangId] = useState('');
   const [modalLoading, setModalLoading] = useState(false);
   const [search, setSearch] = useState('');
 
@@ -17,31 +18,46 @@ const BarangDipinjam = () => {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const nama = user?.name || 'User';
 
-  // Ambil data peminjaman dari API
+  // Ambil data dari API
   useEffect(() => {
-    fetch('http://localhost:8000/api/peminjaman')
-      .then(res => res.json())
-      .then(res => {
+    const fetchData = async () => {
+      try {
+        const peminjamanRes = await fetch('http://localhost:8000/api/peminjaman');
+        const peminjamanData = await peminjamanRes.json();
         const userId = user?.id;
-        const filtered = res.filter(
+
+        const filtered = peminjamanData.filter(
           d =>
-            (d.status === 'dipinjam' || d.status === 'disetujui') &&
+            ['dipinjam', 'disetujui'].includes(d.status) &&
             (d.peminjam_id === userId || d.peminjam?.id === userId)
         );
+
         setData(filtered);
         setLoading(false);
-      });
-    fetch('http://localhost:8000/api/kbarang')
-      .then(res => res.json())
-      .then(data => setKualitasList(data));
+      } catch (err) {
+        console.error('Gagal mengambil data peminjaman:', err);
+      }
+
+      try {
+        const kualitasRes = await fetch('http://localhost:8000/api/kbarang');
+        const kualitasData = await kualitasRes.json();
+        setKualitasList(kualitasData);
+      } catch (err) {
+        console.error('Gagal mengambil data kualitas barang:', err);
+      }
+    };
+
+    fetchData();
   }, [user]);
 
+  // Tutup dropdown saat klik di luar
   useEffect(() => {
-    function handleClickOutside(event) {
-      if (profileRef.current && !profileRef.current.contains(event.target)) {
+    const handleClickOutside = (e) => {
+      if (profileRef.current && !profileRef.current.contains(e.target)) {
         setDropdownOpen(false);
       }
-    }
+    };
+
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
@@ -51,57 +67,85 @@ const BarangDipinjam = () => {
     window.location.href = '/';
   };
 
-  // Handler tombol kembalikan: buka modal
   const handleKembalikan = (item) => {
     setSelected(item);
     setKbarangId('');
     setShowModal(true);
   };
 
-  // Submit pengembalian
   const handleSubmitPengembalian = async (e) => {
     e.preventDefault();
-    if (!kbarang_id) return alert('Pilih kualitas barang!');
+
+    if (!kbarangId) {
+      Swal.fire({
+        title: 'Peringatan!',
+        text: 'Pilih kualitas barang!',
+        icon: 'error'
+      });
+      return;
+    }
+
     setModalLoading(true);
-    const res = await fetch('http://localhost:8000/api/pengembalian', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        peminjam_id: selected.peminjam_id,
-        barang_id: selected.barang_id,
-        kbarang_id,
-        jumlah: selected.jumlah,
-        tanggal_pinjam: selected.tanggal_pinjam,
-        tanggal_pengembalian: selected.tanggal_pengembalian,
-        status: 'diproses',
-      }),
-    });
-    setModalLoading(false);
-    if (res.ok) {
-      alert('Pengembalian berhasil diajukan!');
-      setData(data.filter(d => d.id !== selected.id));
-      setShowModal(false);
-      setSelected(null);
-    } else {
-      alert('Gagal mengajukan pengembalian!');
+
+    try {
+      const res = await fetch('http://localhost:8000/api/pengembalian', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          peminjam_id: selected.peminjam_id,
+          barang_id: selected.barang_id,
+          kbarang_id: kbarangId,
+          jumlah: selected.jumlah,
+          tanggal_pinjam: selected.tanggal_pinjam,
+          tanggal_pengembalian: selected.tanggal_pengembalian,
+          status: 'diproses'
+        })
+      });
+
+      setModalLoading(false);
+
+      if (res.ok) {
+        Swal.fire({
+          title: 'Info',
+          text: 'Pengembalian berhasil diajukan!',
+          icon: 'success'
+        });
+
+        setData(data.filter(d => d.id !== selected.id));
+        setShowModal(false);
+        setSelected(null);
+      } else {
+        Swal.fire({
+          title: 'Info',
+          text: 'Gagal mengajukan pengembalian!',
+          icon: 'error'
+        });
+      }
+    } catch (err) {
+      setModalLoading(false);
+      Swal.fire({
+        title: 'Error',
+        text: 'Terjadi kesalahan saat mengirim data!',
+        icon: 'error'
+      });
     }
   };
 
-  // Filter data berdasarkan search
-  const filteredData = data.filter((p) =>
-    (p.barang?.name || '').toLowerCase().includes(search.toLowerCase())
+  // Filter data berdasarkan pencarian
+  const filteredData = data.filter((item) =>
+    (item.barang?.name || '').toLowerCase().includes(search.toLowerCase())
   );
 
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-blue-50 to-blue-100">
       <SidebarP />
       <div className="ml-64 w-full min-h-screen flex flex-col px-6 py-10">
-        {/* Header profile dengan dropdown */}
+        {/* Header User */}
         <div className="flex justify-end items-center mb-8">
           <div className="relative" ref={profileRef}>
             <button
+              onClick={() => setDropdownOpen(!dropdownOpen)}
               className="focus:outline-none"
-              onClick={() => setDropdownOpen((open) => !open)}
             >
               <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center shadow-lg border border-blue-200 hover:scale-105 transition">
                 <FaUserCircle className="text-4xl text-blue-500" />
@@ -120,7 +164,8 @@ const BarangDipinjam = () => {
             )}
           </div>
         </div>
-        {/* Judul & Search */}
+
+        {/* Header & Search */}
         <div className="w-full max-w-7xl mx-auto flex flex-col md:flex-row md:items-center md:justify-between gap-6 mb-8">
           <div>
             <h2 className="text-3xl font-extrabold text-blue-700 flex items-center gap-3 drop-shadow-lg">
@@ -130,20 +175,19 @@ const BarangDipinjam = () => {
               Daftar barang yang sedang kamu pinjam dan statusnya.
             </p>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Cari nama barang..."
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                className="pl-12 pr-4 py-3 rounded-2xl border border-blue-200 bg-white shadow focus:ring-2 focus:ring-blue-300 text-lg min-w-[320px]"
-              />
-              <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-300 text-xl" />
-            </div>
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Cari nama barang..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-12 pr-4 py-3 rounded-2xl border border-blue-200 bg-white shadow focus:ring-2 focus:ring-blue-300 text-lg min-w-[320px]"
+            />
+            <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-300 text-xl" />
           </div>
         </div>
-        {/* Table */}
+
+        {/* Tabel Barang Dipinjam */}
         <div className="w-full max-w-7xl mx-auto bg-white/90 rounded-3xl shadow-2xl border border-blue-100 overflow-x-auto">
           <table className="min-w-full text-base">
             <thead>
@@ -192,17 +236,22 @@ const BarangDipinjam = () => {
                     <td className="py-3 px-6">{p.tanggal_pinjam || '-'}</td>
                     <td className="py-3 px-6">{p.tanggal_pengembalian || '-'}</td>
                     <td className="py-3 px-6">
-                      <span className={`px-3 py-1 rounded-full text-xs font-bold shadow
-                        ${p.status === 'dipinjam' ? 'bg-yellow-100 text-yellow-700' :
-                          p.status === 'disetujui' ? 'bg-green-100 text-green-700' :
-                          'bg-gray-100 text-gray-500'}`}>
+                      <span
+                        className={`px-3 py-1 rounded-full text-xs font-bold shadow ${
+                          p.status === 'dipinjam'
+                            ? 'bg-yellow-100 text-yellow-700'
+                            : p.status === 'disetujui'
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-gray-100 text-gray-500'
+                        }`}
+                      >
                         {p.status || '-'}
                       </span>
                     </td>
                     <td className="py-3 px-6">
                       <button
-                        className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-blue-400 text-white px-5 py-2 rounded-full font-bold shadow-lg hover:from-blue-700 hover:to-blue-600 transition-all duration-200 text-base"
                         onClick={() => handleKembalikan(p)}
+                        className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-blue-400 text-white px-5 py-2 rounded-full font-bold shadow-lg hover:from-blue-700 hover:to-blue-600 transition-all duration-200 text-base"
                       >
                         <FaUndoAlt /> Kembalikan
                       </button>
@@ -214,7 +263,7 @@ const BarangDipinjam = () => {
           </table>
         </div>
 
-        {/* Modal Pengembalian */}
+        {/* Modal Konfirmasi Pengembalian */}
         {showModal && selected && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
             <div className="bg-white rounded-3xl shadow-2xl p-10 w-full max-w-lg relative border border-blue-100">
@@ -228,35 +277,29 @@ const BarangDipinjam = () => {
               <h3 className="text-2xl font-extrabold mb-6 text-blue-700 flex items-center gap-2">
                 <FaUndoAlt className="text-blue-400" /> Konfirmasi Pengembalian
               </h3>
+
+              {/* Detail Barang */}
               <div className="mb-6 grid grid-cols-2 gap-4">
-                <div>
-                  <div className="text-gray-500 text-sm">Nama Barang</div>
-                  <div className="font-bold text-blue-700">{selected.barang?.name}</div>
-                </div>
-                <div>
-                  <div className="text-gray-500 text-sm">Jumlah</div>
-                  <div className="font-bold text-blue-700">{selected.jumlah}</div>
-                </div>
-                <div>
-                  <div className="text-gray-500 text-sm">Tanggal Pinjam</div>
-                  <div className="font-bold text-blue-700">{selected.tanggal_pinjam}</div>
-                </div>
-                <div>
-                  <div className="text-gray-500 text-sm">Tanggal Kembali</div>
-                  <div className="font-bold text-blue-700">{selected.tanggal_pengembalian}</div>
-                </div>
+                <Detail label="Nama Barang" value={selected.barang?.name} />
+                <Detail label="Jumlah" value={selected.jumlah} />
+                <Detail label="Tanggal Pinjam" value={selected.tanggal_pinjam} />
+                <Detail label="Tanggal Kembali" value={selected.tanggal_pengembalian} />
               </div>
+
+              {/* Form Pengembalian */}
               <form onSubmit={handleSubmitPengembalian}>
                 <div className="mb-6">
-                  <label className="block mb-2 font-semibold text-blue-700">Kualitas Barang Saat Dikembalikan</label>
+                  <label className="block mb-2 font-semibold text-blue-700">
+                    Kualitas Barang Saat Dikembalikan
+                  </label>
                   <select
-                    value={kbarang_id}
-                    onChange={e => setKbarangId(e.target.value)}
+                    value={kbarangId}
+                    onChange={(e) => setKbarangId(e.target.value)}
                     required
                     className="border border-blue-200 rounded-xl px-4 py-3 w-full bg-white focus:ring-2 focus:ring-blue-300 text-base"
                   >
                     <option value="">Pilih Kualitas</option>
-                    {kualitasList.map(k => (
+                    {kualitasList.map((k) => (
                       <option key={k.id} value={k.id}>
                         {k.name}
                       </option>
@@ -265,13 +308,13 @@ const BarangDipinjam = () => {
                 </div>
                 <button
                   type="submit"
-                  className="w-full bg-gradient-to-r from-blue-600 to-blue-500 text-white px-8 py-3 rounded-full font-extrabold shadow-xl hover:from-blue-700 hover:to-blue-600 transition-all duration-200 text-lg flex items-center justify-center gap-2"
                   disabled={modalLoading}
+                  className="w-full bg-gradient-to-r from-blue-600 to-blue-500 text-white px-8 py-3 rounded-full font-extrabold shadow-xl hover:from-blue-700 hover:to-blue-600 transition-all duration-200 text-lg flex items-center justify-center gap-2"
                 >
                   {modalLoading ? (
                     <svg className="animate-spin h-5 w-5 text-white" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
                     </svg>
                   ) : (
                     <>
@@ -287,5 +330,13 @@ const BarangDipinjam = () => {
     </div>
   );
 };
+
+// Komponen kecil untuk menampilkan detail di modal
+const Detail = ({ label, value }) => (
+  <div>
+    <div className="text-gray-500 text-sm">{label}</div>
+    <div className="font-bold text-blue-700">{value}</div>
+  </div>
+);
 
 export default BarangDipinjam;

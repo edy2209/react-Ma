@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import StarRatings from "react-star-ratings";
-
+import Swal from 'sweetalert2';
 const DELAY_MINUTES = 30; // delay dalam menit
 
 const PopupRating = ({ userId }) => {
@@ -29,22 +29,34 @@ const PopupRating = ({ userId }) => {
   }, [userId]);
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      await axios.post("http://localhost:8000/api/rating", {
-        user_id: userId,
-        rating,
-        feedback,
-      });
-      setShow(false);
-      localStorage.setItem(`popupRatingLastHide_${userId}`, Date.now().toString());
-      alert("Terima kasih atas ratingnya!");
-    } catch (err) {
-      alert("Gagal mengirim rating!");
-    }
-    setLoading(false);
-  };
+  e.preventDefault();
+  setLoading(true);
+  try {
+    await axios.post("http://localhost:8000/api/rating", {
+      user_id: userId,
+      rating,
+      feedback,
+    });
+    setShow(false);
+    localStorage.setItem(`popupRatingLastHide_${userId}`, Date.now().toString());
+
+    Swal.fire({
+      title: 'Terima kasih!',
+      text: 'Rating kamu berhasil dikirim.',
+      icon: 'success',
+      confirmButtonColor: '#2563eb'
+    });
+  } catch (err) {
+    Swal.fire({
+      title: 'Gagal',
+      text: 'Gagal mengirim rating. Silakan coba lagi.',
+      icon: 'error',
+      confirmButtonColor: '#ef4444'
+    });
+  }
+  setLoading(false);
+};
+
 
   const handleClose = () => {
     setShow(false);
