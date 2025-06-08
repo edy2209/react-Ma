@@ -1,151 +1,197 @@
 import React, { useEffect, useState } from 'react';
 import SidebarP from './SidebarP';
-import { FaSearch, FaBoxOpen, FaCubes, FaTags, FaWarehouse, FaClipboardCheck } from 'react-icons/fa';
+import { FaSearch, FaBoxOpen, FaTags, FaClipboardCheck } from 'react-icons/fa';
 
 const DataAset = () => {
   const [data, setData] = useState([]);
   const [peminjaman, setPeminjaman] = useState([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Fetch data aset dan peminjaman dari API
   useEffect(() => {
-    Promise.all([
-      fetch('http://localhost:8000/api/barang').then(res => res.json()),
-      fetch('http://localhost:8000/api/peminjaman').then(res => res.json())
-    ]).then(([barang, pinjam]) => {
-      setData(barang);
-      setPeminjaman(pinjam);
-      setLoading(false);
-    });
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // Fetch data barang
+        const barangResponse = await fetch('http://localhost:8000/api/barang');
+        if (!barangResponse.ok) {
+          throw new Error(`HTTP error! status: ${barangResponse.status}`);
+        }
+        const barangResult = await barangResponse.json();
+        
+        // Validasi struktur data
+        if (!barangResult.success || !Array.isArray(barangResult.data)) {
+          throw new Error('Struktur data barang tidak valid');
+        }
+
+        // Filter hanya barang yang boleh dipinjam
+        const filteredBarang = barangResult.data.filter(item => item.status_pinjam === true);
+
+        // Fetch data peminjaman
+        const peminjamanResponse = await fetch('http://localhost:8000/api/peminjaman');
+        if (!peminjamanResponse.ok) {
+          throw new Error(`HTTP error! status: ${peminjamanResponse.status}`);
+        }
+        const peminjamanResult = await peminjamanResponse.json();
+
+        setData(filteredBarang);
+        setPeminjaman(peminjamanResult.data || []);
+      } catch (err) {
+        console.error('Fetch error:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
   }, []);
 
-  // Filter data berdasarkan search
-  const filtered = data.filter(
-    d =>
-      d.name.toLowerCase().includes(search.toLowerCase()) ||
-      (d.category?.name || '').toLowerCase().includes(search.toLowerCase())
-  );
-
-  // Hitung jumlah dipinjam untuk setiap aset
   const getDipinjam = (asetId) => {
+    if (!Array.isArray(peminjaman)) return 0;
+    
     return peminjaman
-      .filter(
-        p =>
-          (p.status === 'dipinjam' || p.status === 'disetujui') &&
-          p.barang_id === asetId
+      .filter(p => 
+        (p.status === 'dipinjam' || p.status === 'disetujui') &&
+        p.barang_id === asetId
       )
       .reduce((sum, p) => sum + (parseInt(p.jumlah) || 0), 0);
   };
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen bg-gradient-to-br from-blue-50 to-blue-100">
+        <SidebarP />
+        <div className="ml-64 w-full flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex min-h-screen bg-gradient-to-br from-blue-50 to-blue-100">
+        <SidebarP />
+        <div className="ml-64 w-full flex items-center justify-center p-8">
+          <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 w-full max-w-2xl">
+            <p className="font-bold">Error</p>
+            <p>{error}</p>
+            <p className="mt-2 text-sm">Silakan refresh halaman atau coba lagi nanti.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const filteredData = data.filter(item =>
+    item.name.toLowerCase().includes(search.toLowerCase()) ||
+    item.category.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-blue-50 to-blue-100">
       <SidebarP />
       <div className="ml-64 w-full min-h-screen flex flex-col items-center px-6 py-12">
-        {/* Header */}
         <div className="w-full max-w-7xl flex flex-col md:flex-row md:items-center md:justify-between gap-6 mb-10">
           <div>
-            <h1 className="text-3xl font-extrabold text-blue-700 flex items-center gap-3 drop-shadow-lg">
+            <h1 className="text-3xl font-extrabold text-blue-700 flex items-center gap-3">
               <FaBoxOpen className="text-yellow-400" /> Data Aset
             </h1>
             <p className="text-gray-500 mt-2 text-lg">
-              Lihat seluruh aset/barang yang tersedia dan detailnya.
+              Barang yang tersedia untuk dipinjam
             </p>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Cari nama aset atau kategori..."
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                className="pl-12 pr-4 py-3 rounded-2xl border border-blue-200 bg-white shadow focus:ring-2 focus:ring-blue-300 text-lg min-w-[320px]"
-              />
-              <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-300 text-xl" />
-            </div>
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Cari nama atau kategori..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-12 pr-4 py-3 rounded-2xl border border-blue-200 bg-white shadow focus:ring-2 focus:ring-blue-300 text-lg min-w-[320px]"
+            />
+            <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-300 text-xl" />
           </div>
         </div>
-        {/* Table/Card List */}
+
         <div className="w-full max-w-7xl">
-          {loading ? (
-            <div className="flex justify-center items-center h-96">
-              <svg className="animate-spin h-10 w-10 text-blue-400" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>
-              </svg>
+          {filteredData.length === 0 ? (
+            <div className="text-center py-16">
+              <p className="text-gray-400 text-xl">Tidak ada barang yang dapat dipinjam</p>
+              {search && (
+                <button 
+                  onClick={() => setSearch('')}
+                  className="mt-4 text-blue-500 hover:text-blue-700"
+                >
+                  Reset pencarian
+                </button>
+              )}
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
-              {filtered.length > 0 ? (
-                filtered.map(aset => {
-                  const dipinjam = getDipinjam(aset.id);
-                  const tersedia = (parseInt(aset.jumlah_barang) || 0) - dipinjam;
-                  return (
-                    <div
-                      key={aset.id}
-                      className="group bg-white/90 rounded-3xl shadow-2xl border border-blue-100 p-6 flex flex-col gap-4 relative overflow-hidden hover:scale-[1.03] transition-transform duration-300"
-                    >
-                      {/* Decorative background */}
-                      <div className="absolute -top-8 -right-8 opacity-10 group-hover:opacity-20 transition">
-                        <svg width="120" height="120"><circle cx="60" cy="60" r="60" fill="#3b82f6" /></svg>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredData.map((item) => {
+                const jumlahDipinjam = getDipinjam(item.id);
+                const jumlahTersedia = item.jumlah_barang - jumlahDipinjam;
+
+                return (
+                  <div 
+                    key={item.id} 
+                    className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow"
+                  >
+                    <div className="p-4 flex justify-center bg-gray-50">
+                      <img
+                        src={item.image_url}
+                        alt={item.name}
+                        className="h-40 w-full object-contain"
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = 'https://via.placeholder.com/300x200?text=Gambar+Tidak+Tersedia';
+                        }}
+                      />
+                    </div>
+                    <div className="p-6">
+                      <div className="flex justify-between items-start">
+                        <h2 className="text-xl font-bold text-gray-800">{item.name}</h2>
+                        <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">
+                          {item.kode_barang}
+                        </span>
                       </div>
-                      {/* Gambar aset */}
-                      <div className="flex justify-center">
-                        <img
-                          src={aset.image ? `http://localhost:8000/storage/${aset.image}` : 'https://via.placeholder.com/120x120?text=No+Img'}
-                          alt={aset.name}
-                          className="w-28 h-28 object-cover rounded-2xl border-2 border-blue-100 bg-white shadow"
-                        />
-                      </div>
-                      {/* Info stok & dipinjam */}
-                      <div className="flex flex-col gap-2 mt-2">
-                        <div className="flex items-center justify-between">
-                          <span className="flex items-center gap-1 text-gray-500">
-                            <span className="inline-block w-2 h-2 rounded-full bg-green-400 mr-1"></span>
-                            <b className="text-green-700">Tersedia</b>
-                          </span>
-                          <span className="bg-green-100 text-green-700 font-bold px-3 py-1 rounded-full text-lg shadow">
-                            {tersedia < 0 ? 0 : tersedia}
-                          </span>
+                      <p className="mt-1 text-gray-500 flex items-center">
+                        <FaTags className="mr-2" /> {item.category}
+                      </p>
+                      
+                      <div className="mt-4 space-y-2">
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Total:</span>
+                          <span className="font-medium">{item.jumlah_barang}</span>
                         </div>
-                        <div className="flex items-center justify-between">
-                          <span className="flex items-center gap-1 text-gray-500">
-                            <span className="inline-block w-2 h-2 rounded-full bg-orange-400 mr-1"></span>
-                            <b className="text-orange-600">Dipinjam</b>
-                          </span>
-                          <span className="bg-orange-100 text-orange-600 font-bold px-3 py-1 rounded-full text-lg shadow">
-                            {dipinjam}
-                          </span>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Dipinjam:</span>
+                          <span className="font-medium text-orange-600">{jumlahDipinjam}</span>
                         </div>
-                        <div className="flex items-center justify-between">
-                          <span className="flex items-center gap-1 text-gray-500">
-                            <span className="inline-block w-2 h-2 rounded-full bg-blue-400 mr-1"></span>
-                            <b className="text-blue-700">Total</b>
-                          </span>
-                          <span className="bg-blue-100 text-blue-700 font-bold px-3 py-1 rounded-full text-lg shadow">
-                            {aset.jumlah_barang}
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Tersedia:</span>
+                          <span className="font-medium text-green-600">
+                            {jumlahTersedia > 0 ? jumlahTersedia : 0}
                           </span>
                         </div>
                       </div>
-                      {/* Nama dan kategori */}
-                      <div className="flex flex-col items-center gap-1 mt-2">
-                        <div className="font-extrabold text-xl text-blue-700 text-center">{aset.name}</div>
-                        <div className="flex items-center gap-2 text-sm text-gray-500">
-                          <FaTags className="text-blue-300" /> {aset.category?.name || '-'}
-                        </div>
-                      </div>
-                      {/* Deskripsi */}
-                      <div className="mt-3 text-gray-500 text-sm text-center min-h-[40px]">
-                        {aset.deskripsi || <span className="italic text-gray-300">Tidak ada deskripsi</span>}
+
+                      <div className="mt-4 flex items-center justify-between">
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                          <FaClipboardCheck className="mr-1" /> Boleh Dipinjam
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          Ditambahkan: {new Date(item.created_at).toLocaleDateString()}
+                        </span>
                       </div>
                     </div>
-                  );
-                })
-              ) : (
-                <div className="col-span-full text-center text-gray-400 py-24 text-xl">
-                  Tidak ada aset ditemukan.
-                </div>
-              )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
