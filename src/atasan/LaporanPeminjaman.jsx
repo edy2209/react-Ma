@@ -17,58 +17,77 @@ const LaporanPeminjaman = () => {
   const [search, setSearch] = useState('');
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [loadingExport, setLoadingExport] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const profileRef = useRef(null);
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const nama = user?.name || 'User';
 
   useEffect(() => {
-    // Fetch barang
-    fetch('http://localhost:8000/api/barang')
-      .then(res => res.json())
-      .then(data => setDataAset(data));
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // Fetch all data in parallel
+        const [barangRes, peminjamanRes, maintenanceRes] = await Promise.all([
+          fetch('http://localhost:8000/api/barang'),
+          fetch('http://localhost:8000/api/peminjaman'),
+          fetch('http://localhost:8000/api/maintenance')
+        ]);
 
-    // Fetch peminjaman
-    fetch('http://localhost:8000/api/peminjaman')
-      .then(res => res.json())
-      .then(data => setPeminjaman(data));
+        // Check all responses
+        if (!barangRes.ok) throw new Error('Gagal mengambil data barang');
+        if (!peminjamanRes.ok) throw new Error('Gagal mengambil data peminjaman');
+        if (!maintenanceRes.ok) throw new Error('Gagal mengambil data maintenance');
 
-    // Fetch maintenance
-    fetch('http://localhost:8000/api/maintenance')
-      .then(res => res.json())
-      .then(json => {
-        if (json.success && Array.isArray(json.data)) {
-          setMaintenanceData(json.data);
-        }
-      });
+        const [barangData, peminjamanData, maintenanceData] = await Promise.all([
+          barangRes.json(),
+          peminjamanRes.json(),
+          maintenanceRes.json()
+        ]);
+
+        // Set data with proper structure checking
+        setDataAset(barangData.data || []);
+        setPeminjaman(peminjamanData.data || []);
+        setMaintenanceData(maintenanceData.data || []);
+
+      } catch (err) {
+        console.error('Fetch error:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
   }, []);
 
   useEffect(() => {
-    const totalBarang = dataAset.reduce((sum, b) => sum + (parseInt(b.jumlah_barang) || 0), 0);
+    if (dataAset.length > 0 || peminjaman.length > 0 || maintenanceData.length > 0) {
+      const totalBarang = dataAset.reduce((sum, b) => sum + (parseInt(b.jumlah_barang) || 0), 0);
 
-    const dipinjamList = peminjaman.filter(p => p.status === 'dipinjam' || p.status === 'disetujui');
-    const dipinjam = dipinjamList.reduce((sum, p) => sum + (parseInt(p.jumlah) || 0), 0);
+      const dipinjamList = peminjaman.filter(p => p.status === 'dipinjam' || p.status === 'disetujui');
+      const dipinjam = dipinjamList.reduce((sum, p) => sum + (parseInt(p.jumlah) || 0), 0);
 
-    // Hitung maintenance dari peminjaman dengan status 'maintenance'
-    const maintenanceFromPeminjaman = peminjaman
-      .filter(p => p.status === 'maintenance')
-      .reduce((sum, p) => sum + (parseInt(p.jumlah) || 0), 0);
+      const maintenanceFromPeminjaman = peminjaman
+        .filter(p => p.status === 'maintenance')
+        .reduce((sum, p) => sum + (parseInt(p.jumlah) || 0), 0);
 
-    // Hitung maintenance dari API maintenance dengan status 'proses'
-    const maintenanceFromAPI = maintenanceData
-      .filter(m => m.status === 'proses')
-      .reduce((sum, m) => sum + (parseInt(m.jumlah) || 0), 0);
+      const maintenanceFromAPI = maintenanceData
+        .filter(m => m.status === 'proses')
+        .reduce((sum, m) => sum + (parseInt(m.jumlah) || 0), 0);
 
-    // Total maintenance gabungan
-    const maintenance = maintenanceFromPeminjaman + maintenanceFromAPI;
+      const maintenance = maintenanceFromPeminjaman + maintenanceFromAPI;
+      const tersedia = totalBarang - dipinjam - maintenance;
 
-    const tersedia = totalBarang - dipinjam - maintenance;
-
-    setStat({
-      totalBarang,
-      tersedia: tersedia < 0 ? 0 : tersedia,
-      dipinjam,
-      maintenance,
-    });
+      setStat({
+        totalBarang,
+        tersedia: tersedia < 0 ? 0 : tersedia,
+        dipinjam,
+        maintenance,
+      });
+    }
   }, [dataAset, peminjaman, maintenanceData]);
 
   useEffect(() => {
@@ -86,10 +105,6 @@ const LaporanPeminjaman = () => {
     window.location.href = '/';
   };
 
-  const filteredPeminjaman = peminjaman
-    .filter(p => ['dipinjam', 'disetujui'].includes(p.status))
-    .filter(p => (p.barang?.name || '').toLowerCase().includes(search.toLowerCase()));
-
   const handleExportPDF = async () => {
     setLoadingExport(true);
     try {
@@ -106,6 +121,10 @@ const LaporanPeminjaman = () => {
         36,
         { align: 'center' }
       );
+
+      const filteredPeminjaman = peminjaman
+        .filter(p => ['dipinjam', 'disetujui'].includes(p.status))
+        .filter(p => (p.barang?.name || '').toLowerCase().includes(search.toLowerCase()));
 
       autoTable(doc, {
         startY: 44,
@@ -138,6 +157,41 @@ const LaporanPeminjaman = () => {
     }
     setLoadingExport(false);
   };
+
+  if (loading) {
+    return (
+      <div className="flex">
+        <Sidebar />
+        <div className="ml-64 w-full flex items-center justify-center h-screen">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex">
+        <Sidebar />
+        <div className="ml-64 w-full p-6">
+          <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4">
+            <p className="font-bold">Error</p>
+            <p>{error}</p>
+            <button 
+              onClick={() => window.location.reload()}
+              className="mt-2 text-blue-500 hover:text-blue-700"
+            >
+              Coba Lagi
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const filteredPeminjaman = peminjaman
+    .filter(p => ['dipinjam', 'disetujui'].includes(p.status))
+    .filter(p => (p.barang?.name || '').toLowerCase().includes(search.toLowerCase()));
 
   return (
     <div className="flex">
@@ -199,15 +253,16 @@ const LaporanPeminjaman = () => {
           <button
             className="flex items-center justify-center gap-2 bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition disabled:opacity-60"
             onClick={handleExportPDF}
-            disabled={loadingExport}
+            disabled={loadingExport || filteredPeminjaman.length === 0}
           >
-            {loadingExport && (
+            {loadingExport ? (
               <svg className="animate-spin h-5 w-5 text-white" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
               </svg>
+            ) : (
+              'Export PDF'
             )}
-            Export PDF
           </button>
         </div>
 
@@ -224,20 +279,21 @@ const LaporanPeminjaman = () => {
               </tr>
             </thead>
             <tbody>
-              {filteredPeminjaman.map((p, idx) => (
-                <tr key={p.id} className="text-center hover:bg-gray-50">
-                  <td className="border border-gray-300 px-4 py-2">{idx + 1}</td>
-                  <td className="border border-gray-300 px-4 py-2">{p.barang?.name || '-'}</td>
-                  <td className="border border-gray-300 px-4 py-2">{p.jumlah}</td>
-                  <td className="border border-gray-300 px-4 py-2">{p.tanggal_pinjam}</td>
-                  <td className="border border-gray-300 px-4 py-2">{p.tanggal_pengembalian}</td>
-                  <td className="border border-gray-300 px-4 py-2 capitalize">{p.status}</td>
-                </tr>
-              ))}
-              {filteredPeminjaman.length === 0 && (
+              {filteredPeminjaman.length > 0 ? (
+                filteredPeminjaman.map((p, idx) => (
+                  <tr key={p.id} className="text-center hover:bg-gray-50">
+                    <td className="border border-gray-300 px-4 py-2">{idx + 1}</td>
+                    <td className="border border-gray-300 px-4 py-2">{p.barang?.name || '-'}</td>
+                    <td className="border border-gray-300 px-4 py-2">{p.jumlah}</td>
+                    <td className="border border-gray-300 px-4 py-2">{p.tanggal_pinjam}</td>
+                    <td className="border border-gray-300 px-4 py-2">{p.tanggal_pengembalian}</td>
+                    <td className="border border-gray-300 px-4 py-2 capitalize">{p.status}</td>
+                  </tr>
+                ))
+              ) : (
                 <tr>
                   <td colSpan={6} className="text-center py-4 text-gray-500">
-                    Tidak ada data peminjaman yang ditemukan.
+                    {search ? 'Tidak ada data peminjaman yang sesuai dengan pencarian' : 'Tidak ada data peminjaman yang ditemukan'}
                   </td>
                 </tr>
               )}

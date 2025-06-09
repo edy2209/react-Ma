@@ -154,11 +154,17 @@ const LaporanAset = () => {
             const dipinjam = getDipinjam(aset.id);
             const tersedia = (parseInt(aset.jumlah_barang) || 0) - dipinjam;
             const categoryName = aset.category?.name || aset.category || '-';
-            const imageUrl = aset.image 
-              ? aset.image.startsWith('http') 
-                ? aset.image 
-                : `http://localhost:8000/storage/${aset.image}`
-              : null;
+            
+            // Perbaikan utama: Penanganan URL gambar yang lebih baik
+            const imageUrl = aset.image_url 
+              ? aset.image_url.startsWith('http') 
+                ? aset.image_url 
+                : `http://localhost:8000/storage/${aset.image_url}`
+              : aset.image
+                ? aset.image.startsWith('http')
+                  ? aset.image
+                  : `http://localhost:8000/storage/${aset.image}`
+                : null;
 
             return (
               <div

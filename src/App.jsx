@@ -17,6 +17,7 @@ import BayarDenda from './peminjam/BayarDenda';
 import HistoryDenda from './peminjam/HistoryDenda';
 import LaporanPengembalian from './atasan/LaporanPengembalian';
 import LaporanDenda from './atasan/LaporanDenda';
+import RatingPage from './atasan/RatingPage';
 
 
 
@@ -57,6 +58,7 @@ const App = () => {
         <Route path="/peminjam/history-denda" element={<ProtectedRoute element={<HistoryDenda />} />} />
         <Route path="/atasan/laporan-pengembalian" element={<ProtectedRoute element={<LaporanPengembalian />} />} />
         <Route path="/atasan/denda-user" element={<ProtectedRoute element={<LaporanDenda />} />} />
+        <Route path="/atasan/rating" element={<ProtectedRoute element={<RatingPage />} />} />
       </Routes>
     </Router>
   );
