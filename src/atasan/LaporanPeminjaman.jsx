@@ -49,7 +49,7 @@ const LaporanPeminjaman = () => {
 
         // Set data with proper structure checking
         setDataAset(barangData.data || []);
-        setPeminjaman(peminjamanData.data || []);
+        setPeminjaman(peminjamanData.data || peminjamanData || []); // Handle both formats
         setMaintenanceData(maintenanceData.data || []);
 
       } catch (err) {
@@ -67,9 +67,11 @@ const LaporanPeminjaman = () => {
     if (dataAset.length > 0 || peminjaman.length > 0 || maintenanceData.length > 0) {
       const totalBarang = dataAset.reduce((sum, b) => sum + (parseInt(b.jumlah_barang) || 0), 0);
 
-      const dipinjamList = peminjaman.filter(p => p.status === 'dipinjam' || p.status === 'disetujui');
+      // Hitung yang sedang dipinjam (status disetujui saja)
+      const dipinjamList = peminjaman.filter(p => p.status === 'disetujui');
       const dipinjam = dipinjamList.reduce((sum, p) => sum + (parseInt(p.jumlah) || 0), 0);
 
+      // Hitung maintenance
       const maintenanceFromPeminjaman = peminjaman
         .filter(p => p.status === 'maintenance')
         .reduce((sum, p) => sum + (parseInt(p.jumlah) || 0), 0);
@@ -116,21 +118,22 @@ const LaporanPeminjaman = () => {
       doc.text('Laporan Peminjaman Aset', doc.internal.pageSize.getWidth() / 2, 28, { align: 'center' });
       doc.setFontSize(10);
       doc.text(
-        'Laporan ini berisi data peminjaman aset yang masih aktif (status dipinjam/disetujui).',
+        'Laporan ini berisi data peminjaman aset yang disetujui.',
         doc.internal.pageSize.getWidth() / 2,
         36,
         { align: 'center' }
       );
 
       const filteredPeminjaman = peminjaman
-        .filter(p => ['dipinjam', 'disetujui'].includes(p.status))
+        .filter(p => p.status === 'disetujui')
         .filter(p => (p.barang?.name || '').toLowerCase().includes(search.toLowerCase()));
 
       autoTable(doc, {
         startY: 44,
-        head: [['No', 'Nama Barang', 'Jumlah', 'Tanggal Pinjam', 'Tanggal Kembali', 'Status']],
+        head: [['No', 'Peminjam', 'Nama Barang', 'Jumlah', 'Tanggal Pinjam', 'Tanggal Kembali', 'Status']],
         body: filteredPeminjaman.map((p, idx) => [
           idx + 1,
+          p.peminjam?.name || '-',
           p.barang?.name || '-',
           p.jumlah || '-',
           p.tanggal_pinjam || '-',
@@ -190,7 +193,7 @@ const LaporanPeminjaman = () => {
   }
 
   const filteredPeminjaman = peminjaman
-    .filter(p => ['dipinjam', 'disetujui'].includes(p.status))
+    .filter(p => p.status === 'disetujui')
     .filter(p => (p.barang?.name || '').toLowerCase().includes(search.toLowerCase()));
 
   return (
@@ -271,6 +274,7 @@ const LaporanPeminjaman = () => {
             <thead>
               <tr className="bg-gray-100">
                 <th className="border border-gray-300 px-4 py-2">No</th>
+                <th className="border border-gray-300 px-4 py-2">Peminjam</th>
                 <th className="border border-gray-300 px-4 py-2">Nama Barang</th>
                 <th className="border border-gray-300 px-4 py-2">Jumlah</th>
                 <th className="border border-gray-300 px-4 py-2">Tanggal Pinjam</th>
@@ -283,6 +287,7 @@ const LaporanPeminjaman = () => {
                 filteredPeminjaman.map((p, idx) => (
                   <tr key={p.id} className="text-center hover:bg-gray-50">
                     <td className="border border-gray-300 px-4 py-2">{idx + 1}</td>
+                    <td className="border border-gray-300 px-4 py-2">{p.peminjam?.name || '-'}</td>
                     <td className="border border-gray-300 px-4 py-2">{p.barang?.name || '-'}</td>
                     <td className="border border-gray-300 px-4 py-2">{p.jumlah}</td>
                     <td className="border border-gray-300 px-4 py-2">{p.tanggal_pinjam}</td>
@@ -292,8 +297,8 @@ const LaporanPeminjaman = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={6} className="text-center py-4 text-gray-500">
-                    {search ? 'Tidak ada data peminjaman yang sesuai dengan pencarian' : 'Tidak ada data peminjaman yang ditemukan'}
+                  <td colSpan={7} className="text-center py-4 text-gray-500">
+                    {search ? 'Tidak ada data peminjaman yang sesuai dengan pencarian' : 'Tidak ada data peminjaman yang disetujui'}
                   </td>
                 </tr>
               )}
