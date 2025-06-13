@@ -1,7 +1,8 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { FaHome, FaFileAlt, FaTools, FaClipboardList, FaUndo, FaMoneyBillAlt } from 'react-icons/fa';
+import { FaHome, FaFileAlt, FaTools, FaClipboardList, FaUndo, FaMoneyBillAlt, FaCheckCircle } from 'react-icons/fa';
 import { FaStar } from 'react-icons/fa';
+
 const Sidebar = () => {
   return (
     <div className="w-64 h-screen bg-gray-800 text-white fixed font-sans">
@@ -10,6 +11,11 @@ const Sidebar = () => {
         <Link to="/dashboard-a" className="flex items-center gap-3 hover:bg-gray-700 p-2 rounded">
           <FaHome className="text-xl" />
           <span className="text-lg">Dashboard</span>
+        </Link>
+        {/* New Confirmation Link */}
+        <Link to="/atasan/konfirmasi-peminjaman" className="flex items-center gap-3 hover:bg-gray-700 p-2 rounded">
+          <FaCheckCircle className="text-xl" />
+          <span className="text-lg">Konfirmasi Peminjaman</span>
         </Link>
         <Link to="/atasan/laporan-aset" className="flex items-center gap-3 hover:bg-gray-700 p-2 rounded">
           <FaFileAlt className="text-xl" />
@@ -23,7 +29,6 @@ const Sidebar = () => {
           <FaClipboardList className="text-xl" />
           <span className="text-lg">Laporan Peminjaman</span>
         </Link>
-        {/* Tambahan fitur baru */}
         <Link to="/atasan/laporan-pengembalian" className="flex items-center gap-3 hover:bg-gray-700 p-2 rounded">
           <FaUndo className="text-xl" />
           <span className="text-lg">Laporan Pengembalian</span>
@@ -33,9 +38,9 @@ const Sidebar = () => {
           <span className="text-lg">Denda User</span>
         </Link>
         <Link to="/atasan/rating" className="flex items-center gap-3 hover:bg-gray-700 p-2 rounded">
-        <FaStar className="text-xl" />
-        <span className="text-lg">Feedback Pengguna</span>
-      </Link>
+          <FaStar className="text-xl" />
+          <span className="text-lg">Feedback Pengguna</span>
+        </Link>
       </nav>
     </div>
   );
