@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import SidebarP from './SidebarP';
-import { FaUserCircle } from 'react-icons/fa';
+import { FaUserCircle, FaDatabase, FaClipboardCheck, FaBoxOpen, FaHistory, FaChartBar } from 'react-icons/fa';
 import PopupRating from '../popup/PopupRating';
 
 const DashboardPeminjam = () => {
@@ -8,6 +8,11 @@ const DashboardPeminjam = () => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const nama = user?.name || 'User';
+  const [stats] = useState({
+    peminjamanAktif: 3,
+    peminjamanSelesai: 7,
+    asetTersedia: 24
+  });
 
   const handleLogout = () => {
     localStorage.clear();
@@ -15,120 +20,163 @@ const DashboardPeminjam = () => {
   };
 
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100">
+    <div className="flex min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
       <SidebarP />
-      <div className="ml-64 p-8 w-full flex flex-col">
-        {/* Profile Header */}
-        <div className="flex justify-end items-center mb-8">
-          <div className="relative" ref={profileRef}>
-            <button
-              className="focus:outline-none"
-              onClick={() => setDropdownOpen((open) => !open)}
-            >
-              <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-blue-200 to-blue-400 flex items-center justify-center shadow-lg border-2 border-white">
-                <FaUserCircle className="text-4xl text-blue-700" />
-              </div>
-            </button>
-            {dropdownOpen && (
-              <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg z-10">
-                <div className="px-4 py-3 border-b text-blue-700 font-bold text-lg">{nama}</div>
-                <button
-                  onClick={handleLogout}
-                  className="w-full text-left px-4 py-3 text-red-600 hover:bg-blue-50 rounded-b-xl"
-                >
-                  Logout
-                </button>
-              </div>
-            )}
+      
+      <div className="ml-0 lg:ml-64 flex-1 p-4 md:p-6 transition-all duration-300">
+        {/* Header */}
+        <div className="bg-white rounded-2xl shadow-sm mb-6">
+          <div className="flex justify-between items-center p-4 md:px-6">
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-bold text-gray-800">Dashboard Peminjam</h1>
+            </div>
+            
+            <div className="relative" ref={profileRef}>
+              <button
+                className="flex items-center gap-2 focus:outline-none group"
+                onClick={() => setDropdownOpen((open) => !open)}
+              >
+                <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-blue-200 to-blue-400 flex items-center justify-center shadow">
+                  <FaUserCircle className="text-2xl text-blue-700" />
+                </div>
+                <span className="hidden md:block text-gray-700 font-medium">{nama}</span>
+              </button>
+              
+              {dropdownOpen && (
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg z-10 overflow-hidden border border-gray-100">
+                  <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
+                    <p className="text-sm font-medium text-gray-700">Signed in as</p>
+                    <p className="text-sm font-semibold truncate">{nama}</p>
+                  </div>
+                  <button
+                    onClick={handleLogout}
+                    className="w-full text-left px-4 py-3 text-sm text-red-600 hover:bg-gray-50 transition-colors"
+                  >
+                    Logout
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
         {/* Welcome Card */}
-        <div className="bg-gradient-to-r from-blue-600 to-blue-400 rounded-3xl shadow-2xl p-8 mb-10 flex flex-col md:flex-row items-center gap-8">
-          <div className="flex-1">
-            <h1 className="text-4xl md:text-5xl font-extrabold text-white mb-2 drop-shadow-lg">
-              Selamat Datang, <span className="text-yellow-300">{nama}</span>!
-            </h1>
-            <p className="text-lg md:text-xl text-blue-100 mb-4">
-              Anda masuk sebagai <span className="font-semibold text-white">Peminjam</span>.<br />
-              Silakan gunakan menu di sidebar untuk mengelola aset, mengajukan peminjaman, dan melihat riwayat barang Anda.
-            </p>
-            <div className="flex gap-4 mt-6">
-              <div className="bg-white/80 rounded-xl px-6 py-4 shadow flex flex-col items-center">
-                <span className="text-blue-700 font-bold text-2xl">
-                  <FaUserCircle className="inline mr-2" />
-                  {user?.email || '-'}
-                </span>
-                <span className="text-xs text-blue-500 mt-1">Email Anda</span>
+        <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl shadow-xl p-6 mb-8">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="flex-1 text-white">
+              <h1 className="text-2xl md:text-3xl font-bold mb-3">
+                Selamat Datang, <span className="text-yellow-300">{nama}</span>!
+              </h1>
+              <p className="text-blue-100 mb-4 max-w-2xl">
+                Anda masuk sebagai <span className="font-semibold text-white">Peminjam</span>. 
+                Gunakan menu di sidebar untuk mengelola aset, mengajukan peminjaman, dan melihat riwayat barang Anda.
+              </p>
+              <div className="flex flex-wrap gap-3">
+                <div className="bg-white/20 backdrop-blur-sm rounded-xl px-4 py-3 flex items-center gap-3">
+                  <div className="bg-blue-500 rounded-full p-2">
+                    <FaUserCircle className="text-white" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-blue-100">Email Anda</p>
+                    <p className="text-sm font-medium">{user?.email || '-'}</p>
+                  </div>
+                </div>
               </div>
-              {/* Tambah info lain jika perlu */}
             </div>
-          </div>
-          <div className="flex-1 flex justify-center">
-            <img
-              src="https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=600&q=80"
-              alt="Dashboard Illustration"
-              className="w-72 md:w-96 drop-shadow-xl rounded-2xl"
-              draggable={false}
-            />
+            <div className="flex-1 flex justify-center">
+              <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl p-4 shadow-xl">
+                <img
+                  src="https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=600&q=80"
+                  alt="Dashboard Illustration"
+                  className="w-full max-w-xs rounded-xl shadow-lg border-4 border-white/30"
+                  draggable={false}
+                />
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Info Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        <div className="relative bg-gradient-to-br from-blue-100 via-white to-blue-200 rounded-2xl shadow-2xl p-8 flex flex-col items-center group overflow-hidden hover:scale-[1.03] transition-transform duration-300">
-          <div className="absolute -top-8 -right-8 opacity-20 group-hover:opacity-40 transition">
-            <svg width="120" height="120"><circle cx="60" cy="60" r="60" fill="#3b82f6" /></svg>
+        {/* Stats Overview */}
+        
+
+        {/* Quick Actions */}
+        <div className="mb-8">
+          <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+            <FaChartBar className="text-blue-500" /> Akses Cepat
+          </h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+            <a 
+              href="/peminjam/data-aset" 
+              className="bg-white rounded-xl shadow-md p-5 flex flex-col items-center text-center transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
+            >
+              <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center mb-4">
+                <FaDatabase className="text-blue-600 text-2xl" />
+              </div>
+              <h3 className="font-bold text-gray-800 mb-1">Data Aset</h3>
+              <p className="text-gray-500 text-sm mb-4">Lihat seluruh aset yang tersedia untuk dipinjam</p>
+              <div className="mt-auto w-full">
+                <button className="w-full py-2 bg-blue-100 text-blue-700 rounded-lg font-medium hover:bg-blue-200 transition">
+                  Akses
+                </button>
+              </div>
+            </a>
+            
+            <a 
+              href="/peminjam/ajukan-peminjaman" 
+              className="bg-white rounded-xl shadow-md p-5 flex flex-col items-center text-center transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
+            >
+              <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mb-4">
+                <FaClipboardCheck className="text-green-600 text-2xl" />
+              </div>
+              <h3 className="font-bold text-gray-800 mb-1">Ajukan Peminjaman</h3>
+              <p className="text-gray-500 text-sm mb-4">Ajukan peminjaman barang dengan mudah dan cepat</p>
+              <div className="mt-auto w-full">
+                <button className="w-full py-2 bg-green-100 text-green-700 rounded-lg font-medium hover:bg-green-200 transition">
+                  Ajukan
+                </button>
+              </div>
+            </a>
+            
+            <a 
+              href="/peminjam/barang-dipinjam" 
+              className="bg-white rounded-xl shadow-md p-5 flex flex-col items-center text-center transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
+            >
+              <div className="w-16 h-16 rounded-full bg-yellow-100 flex items-center justify-center mb-4">
+                <FaBoxOpen className="text-yellow-600 text-2xl" />
+              </div>
+              <h3 className="font-bold text-gray-800 mb-1">Barang Dipinjam</h3>
+              <p className="text-gray-500 text-sm mb-4">Pantau status barang yang sedang Anda pinjam</p>
+              <div className="mt-auto w-full">
+                <button className="w-full py-2 bg-yellow-100 text-yellow-700 rounded-lg font-medium hover:bg-yellow-200 transition">
+                  Lihat
+                </button>
+              </div>
+            </a>
+            
+            <a 
+              href="/peminjam/riwayat-peminjaman" 
+              className="bg-white rounded-xl shadow-md p-5 flex flex-col items-center text-center transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
+            >
+              <div className="w-16 h-16 rounded-full bg-purple-100 flex items-center justify-center mb-4">
+                <FaHistory className="text-purple-600 text-2xl" />
+              </div>
+              <h3 className="font-bold text-gray-800 mb-1">Riwayat Peminjaman</h3>
+              <p className="text-gray-500 text-sm mb-4">Lihat semua riwayat peminjaman Anda</p>
+              <div className="mt-auto w-full">
+                <button className="w-full py-2 bg-purple-100 text-purple-700 rounded-lg font-medium hover:bg-purple-200 transition">
+                  Riwayat
+                </button>
+              </div>
+            </a>
           </div>
-          <div className="bg-blue-600 text-white rounded-full p-4 mb-4 shadow-lg group-hover:scale-110 transition">
-            <i className="fas fa-database text-3xl"></i>
-          </div>
-          <span className="font-extrabold text-xl mb-1 text-blue-700 tracking-wide">Data Aset</span>
-          <span className="text-gray-500 text-sm text-center mb-4">Lihat seluruh aset yang tersedia untuk dipinjam.</span>
-          <a
-            href="/peminjam/data-aset"
-            className="mt-auto px-5 py-2 rounded-full bg-blue-500 text-white font-semibold shadow hover:bg-blue-700 transition"
-          >
-            Lihat Data
-          </a>
         </div>
-        <div className="relative bg-gradient-to-br from-green-100 via-white to-green-200 rounded-2xl shadow-2xl p-8 flex flex-col items-center group overflow-hidden hover:scale-[1.03] transition-transform duration-300">
-          <div className="absolute -top-8 -right-8 opacity-20 group-hover:opacity-40 transition">
-            <svg width="120" height="120"><circle cx="60" cy="60" r="60" fill="#22c55e" /></svg>
-          </div>
-          <div className="bg-green-500 text-white rounded-full p-4 mb-4 shadow-lg group-hover:scale-110 transition">
-            <i className="fas fa-clipboard-check text-3xl"></i>
-          </div>
-          <span className="font-extrabold text-xl mb-1 text-green-700 tracking-wide">Ajukan Peminjaman</span>
-          <span className="text-gray-500 text-sm text-center mb-4">Ajukan peminjaman barang dengan mudah dan cepat.</span>
-          <a
-            href="/peminjam/ajukan-peminjaman"
-            className="mt-auto px-5 py-2 rounded-full bg-green-500 text-white font-semibold shadow hover:bg-green-700 transition"
-          >
-            Ajukan
-          </a>
-        </div>
-        <div className="relative bg-gradient-to-br from-yellow-100 via-white to-yellow-200 rounded-2xl shadow-2xl p-8 flex flex-col items-center group overflow-hidden hover:scale-[1.03] transition-transform duration-300">
-          <div className="absolute -top-8 -right-8 opacity-20 group-hover:opacity-40 transition">
-            <svg width="120" height="120"><circle cx="60" cy="60" r="60" fill="#facc15" /></svg>
-          </div>
-          <div className="bg-yellow-400 text-white rounded-full p-4 mb-4 shadow-lg group-hover:scale-110 transition">
-            <i className="fas fa-box-open text-3xl"></i>
-          </div>
-          <span className="font-extrabold text-xl mb-1 text-yellow-700 tracking-wide">Barang Dipinjam</span>
-          <span className="text-gray-500 text-sm text-center mb-4">Pantau status barang yang sedang Anda pinjam.</span>
-          <a
-            href="/peminjam/barang-dipinjam"
-            className="mt-auto px-5 py-2 rounded-full bg-yellow-400 text-white font-semibold shadow hover:bg-yellow-500 transition"
-          >
-            Lihat Barang
-          </a>
-        </div>
-      </div>
+        
         {/* Popup Rating */}
         <PopupRating userId={user?.id} />
+        
         {/* Footer */}
-        <div className="mt-16 text-center text-gray-400 text-sm">
+        <div className="mt-10 text-center text-gray-400 text-sm">
           &copy; {new Date().getFullYear()} MA-ERKK &mdash; Dashboard Peminjam. All rights reserved.
         </div>
       </div>

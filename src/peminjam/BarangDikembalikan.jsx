@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import SidebarP from './SidebarP';
-import { FaUserCircle, FaSearch, FaBoxOpen, FaUndoAlt, FaCheckCircle } from 'react-icons/fa';
+import { FaUserCircle, FaSearch, FaBoxOpen, FaUndoAlt, FaCheckCircle, FaCalendarAlt, FaLayerGroup, FaEllipsisV } from 'react-icons/fa';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const BarangDikembalikan = () => {
   const [data, setData] = useState([]);
@@ -12,12 +13,10 @@ const BarangDikembalikan = () => {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const nama = user?.name || 'User';
 
-  // Fetch data pengembalian dari API
   useEffect(() => {
     fetch('http://localhost:8000/api/pengembalian')
       .then(res => res.json())
       .then(res => {
-        // Filter hanya pengembalian milik user ini
         const userId = user?.id;
         const filtered = res.filter(
           d => d.peminjam_id === userId || d.peminjam?.id === userId
@@ -27,7 +26,6 @@ const BarangDikembalikan = () => {
       });
   }, [user]);
 
-  // Dropdown profile logic
   useEffect(() => {
     function handleClickOutside(event) {
       if (profileRef.current && !profileRef.current.contains(event.target)) {
@@ -43,132 +41,202 @@ const BarangDikembalikan = () => {
     window.location.href = '/';
   };
 
-  // Filter data berdasarkan search
   const filteredData = data.filter((p) =>
     (p.barang?.name || '').toLowerCase().includes(search.toLowerCase())
   );
 
+  // Fungsi untuk menentukan warna berdasarkan status
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'diproses': return { bg: 'bg-yellow-50', text: 'text-yellow-700', border: 'border-yellow-200' };
+      case 'selesai': return { bg: 'bg-green-50', text: 'text-green-700', border: 'border-green-200' };
+      default: return { bg: 'bg-gray-50', text: 'text-gray-500', border: 'border-gray-200' };
+    }
+  };
+
+  // Fungsi untuk menentukan warna berdasarkan kualitas
+  const getQualityColor = (quality) => {
+    const q = quality?.toLowerCase() || '';
+    if (q.includes('baik')) return { bg: 'bg-green-100', text: 'text-green-800' };
+    if (q.includes('rusak')) return { bg: 'bg-red-100', text: 'text-red-800' };
+    if (q.includes('hilang')) return { bg: 'bg-orange-100', text: 'text-orange-800' };
+    return { bg: 'bg-gray-100', text: 'text-gray-800' };
+  };
+
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-blue-50 to-blue-100">
+    <div className="flex min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       <SidebarP />
-      <div className="ml-64 w-full min-h-screen flex flex-col px-6 py-10">
-        {/* Header profile dengan dropdown */}
-        <div className="flex justify-end items-center mb-8">
-          <div className="relative" ref={profileRef}>
-            <button
-              className="focus:outline-none"
-              onClick={() => setDropdownOpen((open) => !open)}
-            >
-              <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center shadow-lg border border-blue-200 hover:scale-105 transition">
-                <FaUserCircle className="text-4xl text-blue-500" />
-              </div>
-            </button>
-            {dropdownOpen && (
-              <div className="absolute right-0 mt-2 w-44 bg-white rounded-xl shadow-lg z-10 animate-fade-in">
-                <div className="px-4 py-3 border-b text-blue-700 font-semibold">{nama}</div>
-                <button
-                  onClick={handleLogout}
-                  className="w-full text-left px-4 py-3 text-red-600 hover:bg-blue-50 rounded-b-xl"
-                >
-                  Logout
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-        {/* Judul & Search */}
-        <div className="w-full max-w-7xl mx-auto flex flex-col md:flex-row md:items-center md:justify-between gap-6 mb-8">
+      
+      <div className="ml-0 md:ml-64 w-full min-h-screen flex flex-col px-4 md:px-8 py-6">
+        {/* Header */}
+        <div className="flex justify-between items-center mb-8">
           <div>
-            <h2 className="text-3xl font-extrabold text-blue-700 flex items-center gap-3 drop-shadow-lg">
-              <FaUndoAlt className="text-green-400" /> Barang Dikembalikan
-            </h2>
-            <p className="text-gray-500 mt-2 text-lg">
-              Daftar barang yang sudah kamu kembalikan beserta statusnya.
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-800 flex items-center gap-3">
+              <FaUndoAlt className="text-blue-500" /> 
+              <span>Barang Dikembalikan</span>
+            </h1>
+            <p className="text-gray-500 mt-1 text-sm md:text-base">
+              Daftar barang yang sudah kamu kembalikan beserta statusnya
             </p>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="relative">
+          
+          {/* Profile dropdown */}
+          <div className="relative" ref={profileRef}>
+            <button
+              className="flex items-center gap-3 bg-white rounded-full pl-4 pr-2 py-1 shadow-sm hover:shadow-md transition-shadow"
+              onClick={() => setDropdownOpen((open) => !open)}
+            >
+              <span className="text-gray-700 font-medium hidden sm:block">{nama}</span>
+              <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center">
+                <FaUserCircle className="text-blue-400 text-xl" />
+              </div>
+            </button>
+            
+            <AnimatePresence>
+              {dropdownOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.2 }}
+                  className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg z-10 border border-gray-100"
+                >
+                  <div className="px-4 py-3 border-b text-gray-700 font-semibold">{nama}</div>
+                  <button
+                    onClick={handleLogout}
+                    className="w-full text-left px-4 py-3 text-red-500 hover:bg-gray-50 rounded-b-xl transition-colors"
+                  >
+                    Logout
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
+
+        {/* Search Section */}
+        <div className="bg-white rounded-2xl p-6 mb-8 shadow-sm border border-gray-100">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div className="relative flex-1 max-w-xl">
               <input
                 type="text"
-                placeholder="Cari nama barang..."
+                placeholder="Cari barang yang dikembalikan..."
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                className="pl-12 pr-4 py-3 rounded-2xl border border-blue-200 bg-white shadow focus:ring-2 focus:ring-blue-300 text-lg min-w-[320px]"
+                className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:ring-2 focus:ring-blue-300 focus:border-blue-300 transition-all"
               />
-              <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-300 text-xl" />
+              <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-lg" />
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <span className="text-gray-500 text-sm">Total:</span>
+              <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full font-medium">
+                {filteredData.length} Barang
+              </span>
             </div>
           </div>
         </div>
-        {/* Table */}
-        <div className="w-full max-w-7xl mx-auto bg-white/90 rounded-3xl shadow-2xl border border-blue-100 overflow-x-auto">
-          <table className="min-w-full text-base">
-            <thead>
-              <tr className="bg-gradient-to-r from-blue-100 to-blue-200 text-blue-700">
-                <th className="py-4 px-6 text-left font-bold">No</th>
-                <th className="py-4 px-6 text-left font-bold">Nama Barang</th>
-                <th className="py-4 px-6 text-left font-bold">Jumlah</th>
-                <th className="py-4 px-6 text-left font-bold">Tanggal Pinjam</th>
-                <th className="py-4 px-6 text-left font-bold">Tanggal Kembali</th>
-                <th className="py-4 px-6 text-left font-bold">Kualitas</th>
-                <th className="py-4 px-6 text-left font-bold">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr>
-                  <td colSpan={7} className="py-12 text-center text-blue-400 text-lg font-bold">
-                    Loading...
-                  </td>
-                </tr>
-              ) : filteredData.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="py-12 text-center text-gray-400 text-lg">
-                    Tidak ada barang yang sudah dikembalikan.
-                  </td>
-                </tr>
-              ) : (
-                filteredData.map((p, idx) => (
-                  <tr key={p.id || idx} className="border-b hover:bg-blue-50/60 transition">
-                    <td className="py-3 px-6 font-semibold">{idx + 1}</td>
-                    <td className="py-3 px-6 flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center shadow">
-                        {p.barang?.image ? (
-                          <img
-                            src={`http://localhost:8000/storage/${p.barang.image}`}
-                            alt={p.barang?.name}
-                            className="w-10 h-10 object-cover rounded-lg"
-                          />
-                        ) : (
-                          <FaBoxOpen className="text-blue-300 text-2xl" />
-                        )}
+
+        {/* Content */}
+        <div className="flex-1">
+          {loading ? (
+            <div className="flex justify-center items-center h-64">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+            </div>
+          ) : filteredData.length === 0 ? (
+            <div className="bg-white rounded-2xl p-12 text-center border border-gray-100 shadow-sm">
+              <FaBoxOpen className="mx-auto text-gray-300 text-5xl mb-4" />
+              <h3 className="text-xl font-medium text-gray-500 mb-2">Belum ada barang yang dikembalikan</h3>
+              <p className="text-gray-400 max-w-md mx-auto">
+                Barang yang sudah kamu kembalikan akan muncul di halaman ini
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <AnimatePresence>
+                {filteredData.map((p, idx) => {
+                  const statusColor = getStatusColor(p.status);
+                  const qualityColor = getQualityColor(p.kualitas || p.kbarang?.name);
+                  
+                  return (
+                    <motion.div
+                      key={p.id || idx}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: idx * 0.05 }}
+                      className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow border border-gray-100"
+                    >
+                      {/* Item Header */}
+                      <div className={`p-4 border-b ${statusColor.border}`}>
+                        <div className="flex justify-between items-start">
+                          <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 rounded-xl bg-gray-100 border border-gray-200 flex items-center justify-center overflow-hidden">
+                              {p.barang?.image ? (
+                                <img
+                                  src={`http://localhost:8000/storage/${p.barang.image}`}
+                                  alt={p.barang?.name}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <FaBoxOpen className="text-gray-300 text-xl" />
+                              )}
+                            </div>
+                            <div>
+                              <h4 className="font-bold text-gray-800 line-clamp-1">{p.barang?.name || 'N/A'}</h4>
+                              <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${qualityColor.bg} ${qualityColor.text} mt-1`}>
+                                {p.kualitas || p.kbarang?.name || '-'}
+                              </div>
+                            </div>
+                          </div>
+                          <button className="text-gray-400 hover:text-gray-600 p-1">
+                            <FaEllipsisV className="text-sm" />
+                          </button>
+                        </div>
                       </div>
-                      <span className="font-bold text-blue-700">{p.barang?.name || '-'}</span>
-                    </td>
-                    <td className="py-3 px-6">{p.jumlah || '-'}</td>
-                    <td className="py-3 px-6">{p.tanggal_pinjam || '-'}</td>
-                    <td className="py-3 px-6">{p.tanggal_pengembalian || '-'}</td>
-                    <td className="py-3 px-6">
-                      <span className="px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700 shadow">
-                        {p.kualitas || p.kbarang?.name || '-'}
-                      </span>
-                    </td>
-                    <td className="py-3 px-6">
-                      <span className={`px-3 py-1 rounded-full text-xs font-bold shadow
-                        ${p.status === 'diproses' ? 'bg-yellow-100 text-yellow-700' :
-                          p.status === 'selesai' ? 'bg-green-100 text-green-700' :
-                          'bg-gray-100 text-gray-500'}`}>
-                        {p.status === 'selesai' ? (
-                          <span className="flex items-center gap-1">
-                            <FaCheckCircle className="text-green-400" /> Selesai
-                          </span>
-                        ) : p.status === 'diproses' ? 'Diproses' : (p.status || '-')}
-                      </span>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                      
+                      {/* Item Details */}
+                      <div className="p-4">
+                        <div className="grid grid-cols-2 gap-4 mb-4">
+                          <div className="flex flex-col">
+                            <span className="text-xs text-gray-500 mb-1">Jumlah</span>
+                            <span className="font-medium text-gray-700">{p.jumlah || '0'}</span>
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-xs text-gray-500 mb-1">Status</span>
+                            <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColor.bg} ${statusColor.text}`}>
+                              {p.status === 'selesai' ? (
+                                <span className="flex items-center gap-1">
+                                  <FaCheckCircle className="text-green-400" /> Selesai
+                                </span>
+                              ) : p.status === 'diproses' ? 'Diproses' : (p.status || '-')}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-3 text-sm">
+                            <FaCalendarAlt className="text-gray-400 flex-shrink-0" />
+                            <div>
+                              <div className="text-xs text-gray-500">Tanggal Pinjam</div>
+                              <div className="font-medium text-gray-700">{p.tanggal_pinjam || '-'}</div>
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center gap-3 text-sm">
+                            <FaCalendarAlt className="text-gray-400 flex-shrink-0" />
+                            <div>
+                              <div className="text-xs text-gray-500">Tanggal Kembali</div>
+                              <div className="font-medium text-gray-700">{p.tanggal_pengembalian || '-'}</div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </AnimatePresence>
+            </div>
+          )}
         </div>
       </div>
     </div>
