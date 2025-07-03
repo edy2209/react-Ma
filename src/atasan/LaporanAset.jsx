@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import Sidebar from './Sidebar';
-import { FaUserCircle, FaBoxOpen, FaSearch, FaInfoCircle } from 'react-icons/fa';
+import { FaUserCircle, FaBoxOpen, FaSearch, FaInfoCircle, FaClipboardCheck, FaTags, FaTimes } from 'react-icons/fa';
 
 const LaporanAset = () => {
   const [dataAset, setDataAset] = useState([]);
@@ -9,6 +9,8 @@ const LaporanAset = () => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [detailAset, setDetailAset] = useState(null);
+  const [showDetail, setShowDetail] = useState(false);
   const profileRef = useRef(null);
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const nama = user?.name || 'User';
@@ -57,6 +59,27 @@ const LaporanAset = () => {
   const handleLogout = () => {
     localStorage.clear();
     window.location.href = '/';
+  };
+
+  // Fungsi untuk menampilkan detail barang
+  const handleShowDetail = async (id) => {
+    setShowDetail(true);
+    setDetailAset(null);
+    
+    try {
+      const res = await fetch(`http://localhost:8000/api/barang/${id}`);
+      if (!res.ok) throw new Error('Gagal mengambil detail barang');
+      const json = await res.json();
+      
+      if (json.success && json.data) {
+        setDetailAset(json.data);
+      } else {
+        throw new Error('Struktur data detail tidak valid');
+      }
+    } catch (err) {
+      console.error('Detail fetch error:', err);
+      setDetailAset({ error: 'Gagal mengambil detail barang.' });
+    }
   };
 
   // Filter aset berdasarkan search nama/kode/kategori
@@ -330,6 +353,13 @@ const LaporanAset = () => {
                     
                     <div className="flex justify-between items-center border-t border-gray-100 pt-3">
                       <span className="text-sm text-gray-500">Kategori: {categoryName}</span>
+                      <button 
+                        onClick={() => handleShowDetail(aset.id)}
+                        className="text-blue-500 hover:text-blue-700 flex items-center gap-1 text-sm"
+                      >
+                        <FaInfoCircle className="text-sm" />
+                        Detail
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -358,6 +388,158 @@ const LaporanAset = () => {
                   Reset Pencarian
                 </button>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Modal Detail Barang */}
+        {showDetail && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+            <div 
+              className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden animate-fade-in"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header Modal */}
+              <div className="bg-gradient-to-r from-blue-600 to-blue-500 p-5 flex justify-between items-center">
+                <div className="flex items-center gap-3">
+                  <FaBoxOpen className="text-white text-xl" />
+                  <h2 className="text-xl font-bold text-white">Detail Barang</h2>
+                </div>
+                <button
+                  className="text-white hover:text-blue-200 transition"
+                  onClick={() => setShowDetail(false)}
+                >
+                  <FaTimes className="text-xl" />
+                </button>
+              </div>
+              
+              {/* Body Modal */}
+              <div className="p-6 max-h-[70vh] overflow-y-auto">
+                {detailAset ? (
+                  detailAset.error ? (
+                    <div className="text-red-500 p-4 text-center">
+                      {detailAset.error}
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      {/* Header Detail */}
+                      <div className="border-b pb-4">
+                        <h1 className="text-2xl font-bold text-gray-800">{detailAset.name}</h1>
+                        <div className="flex items-center text-gray-500 mt-1">
+                          <span className="bg-blue-100 text-blue-800 px-2.5 py-0.5 rounded-full text-xs font-medium">
+                            {detailAset.kode_barang}
+                          </span>
+                          <span className="mx-2">•</span>
+                          <span className="flex items-center">
+                            <FaTags className="mr-1 text-sm" /> 
+                            {detailAset.category?.name || detailAset.category || '-'}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      {/* Statistik */}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
+                          <p className="text-sm text-gray-500">Total</p>
+                          <p className="text-2xl font-bold text-blue-600">{detailAset.jumlah_barang}</p>
+                        </div>
+                        
+                        <div className="bg-green-50 p-4 rounded-xl border border-green-100">
+                          <p className="text-sm text-gray-500">Tersedia</p>
+                          <p className="text-2xl font-bold text-green-600">
+                            {detailAset.jumlah_barang - getDipinjam(detailAset.id)}
+                          </p>
+                        </div>
+                        
+                        <div className="bg-amber-50 p-4 rounded-xl border border-amber-100">
+                          <p className="text-sm text-gray-500">Dipinjam</p>
+                          <p className="text-2xl font-bold text-amber-600">
+                            {getDipinjam(detailAset.id)}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      {/* Status */}
+                      <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                        <p className="text-sm text-gray-500 mb-2">Status Pinjam</p>
+                        <p className="text-xl font-bold">
+                          {detailAset.status_pinjam ? (
+                            <span className="text-green-600 flex items-center gap-2">
+                              <FaClipboardCheck className="text-green-500" />
+                              Boleh Dipinjam
+                            </span>
+                          ) : (
+                            <span className="text-red-600">Tidak Bisa Dipinjam</span>
+                          )}
+                        </p>
+                      </div>
+                      
+                      {/* Informasi Tambahan */}
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                          <span className="w-3 h-3 bg-blue-500 rounded-full"></span>
+                          Informasi Tambahan
+                        </h3>
+                        
+                        {detailAset.custom_fields && detailAset.custom_fields.length > 0 ? (
+                          <div className="space-y-3">
+                            {detailAset.custom_fields.map((field, index) => (
+                              <div key={index} className="flex border-b pb-3 last:border-0">
+                                <div className="w-1/3 font-medium text-gray-700">{field.key}</div>
+                                <div className="w-2/3 text-gray-600">{field.value || '-'}</div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="bg-gray-50 p-4 rounded-lg text-center text-gray-500">
+                            Tidak ada informasi tambahan
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Metadata */}
+                      <div className="text-sm text-gray-500 mt-6">
+                        <div className="flex justify-between">
+                          <span>Ditambahkan pada:</span>
+                          <span className="font-medium">
+                            {new Date(detailAset.created_at).toLocaleDateString('id-ID', {
+                              weekday: 'long',
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric'
+                            })}
+                          </span>
+                        </div>
+                        <div className="flex justify-between mt-1">
+                          <span>Terakhir diupdate:</span>
+                          <span className="font-medium">
+                            {new Date(detailAset.updated_at).toLocaleDateString('id-ID', {
+                              weekday: 'long',
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric'
+                            })}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                ) : (
+                  <div className="flex justify-center items-center h-64">
+                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+                  </div>
+                )}
+              </div>
+              
+              {/* Footer Modal */}
+              <div className="border-t p-4 bg-gray-50 flex justify-end">
+                <button
+                  className="px-5 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition"
+                  onClick={() => setShowDetail(false)}
+                >
+                  Tutup
+                </button>
+              </div>
             </div>
           </div>
         )}

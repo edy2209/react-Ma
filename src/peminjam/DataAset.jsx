@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import SidebarP from './SidebarP';
-import { FaSearch, FaBoxOpen, FaTags, FaClipboardCheck, FaExchangeAlt } from 'react-icons/fa';
+import { FaSearch, FaBoxOpen, FaTags, FaClipboardCheck, FaInfoCircle, FaTimes } from 'react-icons/fa';
 import { FiRefreshCw } from 'react-icons/fi';
 
 const DataAset = () => {
@@ -9,6 +9,8 @@ const DataAset = () => {
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [detail, setDetail] = useState(null);
+  const [showDetail, setShowDetail] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -16,22 +18,18 @@ const DataAset = () => {
         setLoading(true);
         setError(null);
         
-        // Fetch data barang
         const barangResponse = await fetch('http://localhost:8000/api/barang');
         if (!barangResponse.ok) {
           throw new Error(`HTTP error! status: ${barangResponse.status}`);
         }
         const barangResult = await barangResponse.json();
         
-        // Validasi struktur data
         if (!barangResult.success || !Array.isArray(barangResult.data)) {
           throw new Error('Struktur data barang tidak valid');
         }
 
-        // Filter hanya barang yang boleh dipinjam
         const filteredBarang = barangResult.data.filter(item => item.status_pinjam === true);
 
-        // Fetch data peminjaman
         const peminjamanResponse = await fetch('http://localhost:8000/api/peminjaman');
         if (!peminjamanResponse.ok) {
           throw new Error(`HTTP error! status: ${peminjamanResponse.status}`);
@@ -50,6 +48,28 @@ const DataAset = () => {
 
     fetchData();
   }, []);
+
+  const handleShowDetail = async (id) => {
+    setShowDetail(true);
+    setDetail(null);
+    
+    try {
+      const res = await fetch(`http://localhost:8000/api/barang/${id}`);
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
+      const json = await res.json();
+      
+      if (json.success && json.data) {
+        setDetail(json.data);
+      } else {
+        throw new Error('Struktur data detail tidak valid');
+      }
+    } catch (err) {
+      console.error('Detail fetch error:', err);
+      setDetail({ error: 'Gagal mengambil detail barang.' });
+    }
+  };
 
   const getDipinjam = (asetId) => {
     if (!Array.isArray(peminjaman)) return 0;
@@ -119,7 +139,6 @@ const DataAset = () => {
     item.category.toLowerCase().includes(search.toLowerCase())
   );
 
-  // Hitung statistik
   const stats = {
     totalAset: data.reduce((sum, item) => sum + parseInt(item.jumlah_barang || 0), 0),
     dipinjam: data.reduce((sum, item) => sum + getDipinjam(item.id), 0),
@@ -166,7 +185,6 @@ const DataAset = () => {
           
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            
             <div className="bg-gradient-to-r from-green-100 to-green-50 border border-green-200 rounded-2xl shadow-sm p-5 flex items-center">
               <div className="bg-green-100 p-3 rounded-lg mr-4">
                 <div className="bg-green-200 p-2 rounded-md">
@@ -178,7 +196,6 @@ const DataAset = () => {
                 <p className="text-2xl font-bold text-green-700">{stats.tersedia}</p>
               </div>
             </div>
-            
           </div>
         </div>
 
@@ -274,6 +291,15 @@ const DataAset = () => {
                           {new Date(item.created_at).toLocaleDateString('id-ID')}
                         </span>
                       </div>
+
+                      {/* Tombol Detail */}
+                      <button
+                        className="mt-4 px-4 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition flex items-center justify-center gap-2 shadow-sm"
+                        onClick={() => handleShowDetail(item.id)}
+                      >
+                        <FaInfoCircle />
+                        Lihat Detail
+                      </button>
                     </div>
                   </div>
                 );
@@ -281,6 +307,139 @@ const DataAset = () => {
             </div>
           )}
         </div>
+
+        {/* Modal Detail Barang - Tanpa Gambar */}
+        {showDetail && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+            <div 
+              className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden animate-fade-in"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header Modal */}
+              <div className="bg-gradient-to-r from-blue-600 to-blue-500 p-5 flex justify-between items-center">
+                <div className="flex items-center gap-3">
+                  <FaBoxOpen className="text-white text-xl" />
+                  <h2 className="text-xl font-bold text-white">Detail Barang</h2>
+                </div>
+                <button
+                  className="text-white hover:text-blue-200 transition"
+                  onClick={() => setShowDetail(false)}
+                >
+                  <FaTimes className="text-xl" />
+                </button>
+              </div>
+              
+              {/* Body Modal */}
+              <div className="p-6 max-h-[70vh] overflow-y-auto">
+                {detail ? (
+                  detail.error ? (
+                    <div className="text-red-500 p-4 text-center">
+                      {detail.error}
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      {/* Header Detail */}
+                      <div className="border-b pb-4">
+                        <h1 className="text-2xl font-bold text-gray-800">{detail.name}</h1>
+                        <div className="flex items-center text-gray-500 mt-1">
+                          <span className="bg-blue-100 text-blue-800 px-2.5 py-0.5 rounded-full text-xs font-medium">
+                            {detail.kode_barang}
+                          </span>
+                          <span className="mx-2">•</span>
+                          <span className="flex items-center">
+                            <FaTags className="mr-1 text-sm" /> {detail.category}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      {/* Statistik */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
+                          <p className="text-sm text-gray-500">Jumlah Total</p>
+                          <p className="text-2xl font-bold text-blue-600">{detail.jumlah_barang}</p>
+                        </div>
+                        
+                        <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
+                          <p className="text-sm text-gray-500">Status Pinjam</p>
+                          <p className="text-xl font-bold">
+                            {detail.status_pinjam ? (
+                              <span className="text-green-600">Boleh Dipinjam</span>
+                            ) : (
+                              <span className="text-red-600">Tidak Bisa Dipinjam</span>
+                            )}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      {/* Informasi Tambahan */}
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                          <span className="w-3 h-3 bg-blue-500 rounded-full"></span>
+                          Informasi Tambahan
+                        </h3>
+                        
+                        {detail.custom_fields && detail.custom_fields.length > 0 ? (
+                          <div className="space-y-3">
+                            {detail.custom_fields.map((field, index) => (
+                              <div key={index} className="flex border-b pb-3 last:border-0">
+                                <div className="w-1/3 font-medium text-gray-700">{field.key}</div>
+                                <div className="w-2/3 text-gray-600">{field.value || '-'}</div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="bg-gray-50 p-4 rounded-lg text-center text-gray-500">
+                            Tidak ada informasi tambahan
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Metadata */}
+                      <div className="text-sm text-gray-500 mt-6">
+                        <div className="flex justify-between">
+                          <span>Ditambahkan pada:</span>
+                          <span className="font-medium">
+                            {new Date(detail.created_at).toLocaleDateString('id-ID', {
+                              weekday: 'long',
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric'
+                            })}
+                          </span>
+                        </div>
+                        <div className="flex justify-between mt-1">
+                          <span>Terakhir diupdate:</span>
+                          <span className="font-medium">
+                            {new Date(detail.updated_at).toLocaleDateString('id-ID', {
+                              weekday: 'long',
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric'
+                            })}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                ) : (
+                  <div className="flex justify-center items-center h-64">
+                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+                  </div>
+                )}
+              </div>
+              
+              {/* Footer Modal */}
+              <div className="border-t p-4 bg-gray-50 flex justify-end">
+                <button
+                  className="px-5 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition"
+                  onClick={() => setShowDetail(false)}
+                >
+                  Tutup
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
